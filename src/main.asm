@@ -24,9 +24,11 @@ _done
 .endmacro
 
 *= $2000
-; .include "./api/kernel.asm"
-; .include "./api/include.asm"
-; .include "events.asm"
+.dsection code
+
+*= $1000
+.dsection variables
+.section code
 start
     jmp main
 rts
@@ -40,18 +42,27 @@ MMU_IO_CTRL = $0001
 CTRL_FAST       =   1
 CTRL_RX_EMPTY   =   2
 CTRL_TX_EMPTY   =   4
-main
-    stz MMU_IO_CTRL
-;     lda #2
-;     sta MMU_IO_CTRL
-; _uartLoop
+TX_BUFFER_PTR = $A0
+RX_BUFFER_PTR = TX_BUFFER_PTR + 2
+TX_SCREEN_PTR = RX_BUFFER_PTR + 2
+RX_SCREEN_PTR = TX_SCREEN_PTR + 2
 
-;     lda UART_CTRL
-;     sta $c000
-;     bra _uartLoop
+main
+    jsr clearScreen
+    stz MMU_IO_CTRL
+    stz lineNum
+    ;INIT POINTERS
+    lda #<$c000
+    sta TX_SCREEN_PTR
+    lda #>$c000
+    sta TX_SCREEN_PTR + 1
+
+    lda screenPos
+    sta RX_SCREEN_PTR
+    lda screenPos + 1
+    sta RX_SCREEN_PTR + 1
+
 _handle
-    jsr printDebug
-    jsr printRx
     lda UART_CTRL
     and #CTRL_TX_EMPTY
     cmp #CTRL_TX_EMPTY
@@ -65,7 +76,7 @@ _handleRead
     bra _handle
     rts
 _txData
-    jsr InitUART
+  ;  jsr InitUART
     bra _handleRead
     rts
 _rxData
@@ -73,9 +84,6 @@ _rxData
     bra _handle
     rts
 
-   ; jsr ReadResponse  ; Read until carriage return
-    ;jsr printRx
-;rts
 ; Send a single character (in A)
 SendChar
     pha
@@ -126,39 +134,52 @@ _read
     rts
 
 ReadResponse
-    ldx #0                ; Buffer index
-ReadLoop
+_readLoop
     jsr ReadChar
-    sta ResponseBuf,x     ; Store byte in buffer
+    sta rxBuffer,x    ; Store byte in buffer
+    cmp #$D0
+    beq _advLine
     cmp #10               ; Check for carriage return
-    beq DoneRead
+    beq _doneRead
+    jsr writeToScreen
+    bne _readLoop
+_doneRead     ; Null-terminate
+    rts
+_advLine
+    pha
+    phx
+    inc lineNum
+    lda lineNum
+    asl
+    tax
+    lda screenPos, x
+    sta RX_SCREEN_PTR
     inx
-    cpx #ResponseBufLen   ; Avoid overflow
-    bne ReadLoop
-DoneRead
-    inx
-    lda #0
-    sta ResponseBuf,x     ; Null-terminate
+    lda screenPos, x
+    sta RX_SCREEN_PTR + 1
+    bra _readLoop
+    plx
+    pla
     rts
 
-printRx
+writeToScreen
+    cmp #10
+    beq _skip
+    cmp #13
+    beq _skip
+    pha
     lda #2
     sta MMU_IO_CTRL
-
-    ldy #0
-_loop
-    lda ResponseBuf, y
-    sta $c000 + 160,y
-    iny
-    cpy #ResponseBufLen
-    bne _loop
+    pla
+    sta (RX_SCREEN_PTR)
+    #add1macro RX_SCREEN_PTR
     stz MMU_IO_CTRL
+_skip
     rts
 
-printDebug
-    #printMsgMacro debugString
-    rts
-
+.include "util.asm"
+.endsection
+.section variables
 ; --- Data ---
 RX_RD_COUNT .word       ?
 TX_WR_COUNT .word       ?
@@ -168,6 +189,42 @@ ATString
 debugString
     .text "DEBUG",13,10,0     ; "AT\r\n" + null terminator
 
-ResponseBuf
-    .fill 64               ; Reserve 64 bytes
-ResponseBufLen = 64
+txBufferLen = 80
+txBuffer
+    .fill txBufferLen               ; Reserve 64 bytes
+
+rxBufferLen = 1840
+rxBuffer
+    .fill rxBufferLen               ; Reserve 64 bytes
+
+lineNum
+    .byte $0
+screenPos
+    .word $C000
+    .word $C050
+    .word $C0A0
+    .word $C0F0
+    .word $C140
+    .word $C190
+    .word $C1E0
+    .word $C230
+    .word $C280
+    .word $C2D0
+    .word $C320
+    .word $C370
+    .word $C3C0
+    .word $C410
+    .word $C460
+    .word $C4B0
+    .word $C500
+    .word $C550
+    .word $C5A0
+    .word $C5F0
+    .word $C640
+    .word $C690
+    .word $C6E0
+    .word $C730
+    .word $C780
+
+.endsection
+
