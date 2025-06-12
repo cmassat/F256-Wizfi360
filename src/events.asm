@@ -47,13 +47,12 @@ _skip_debounce
     bne _skip
    ; jsr getInput
 _skip
-
     rts
-
 
 keyPressed
     lda event.key.ascii
     sta mKeyPress
+    jsr printTxBuffer
 _skip
     rts
 
@@ -89,8 +88,6 @@ initEvents
     stz mKeyPress
     stz mKeyRelease
     rts
-
-
 .endsection
 
 event	.dstruct	 kernel.event.event_t

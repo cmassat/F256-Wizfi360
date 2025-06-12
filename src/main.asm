@@ -4,6 +4,13 @@ UART_DATA  = $DD81   ; UART TX/RX data register
 stringPtr = $a0
 MMU_MEM_CTRL = $0000
 MMU_IO_CTRL = $0001
+CLUT_IO = $0001
+CLUT_FOR = $D800
+CLUT_BCK = $D840
+CLUT_0_ADDR = $D000
+CLUT_1_ADDR = $D400
+CLUT_2_ADDR = $D800
+CLUT_3_ADDR = $DC00
 CTRL_FAST       =   1
 CTRL_RX_EMPTY   =   2
 CTRL_TX_EMPTY   =   4
@@ -15,6 +22,8 @@ SCREEN_PTR = RX_SCREEN_PTR + 2
 TX_SENT_PTR = SCREEN_PTR + 2
 SCROLL_SRC_PTR = TX_SENT_PTR + 2
 SCROLL_DEST_PTR = SCROLL_SRC_PTR + 2
+POINTER_CLUT_SRC = SCROLL_DEST_PTR + 2
+POINTER_CLUT_DEST = POINTER_CLUT_SRC + 2
 *= $2000
 .dsection code
 
@@ -25,6 +34,13 @@ start
     jmp main
     rts
 main
+    ;jsr clut_default_color
+    jsr clut_default_for
+    jsr clut_default_bck
+    jsr defaultScreenColor
+    lda $D001
+    ora #%00000100
+    sta $D001
     jsr clearScreen
     jsr clearTxBuffer
     stz MMU_IO_CTRL
@@ -119,13 +135,13 @@ _backup_buffer
     bra _skipBuffer
     rts
 _okToSendTx
+    lda #0
+    sta (TX_BUFFER_PTR)
     lda #1
     sta  txReady
     jsr _skipBuffer
 _end
     rts
-
-
 
 sendCommand
     lda #<txBuffer
@@ -149,7 +165,8 @@ _end
     jsr sendChar
     ply
     stz txReady
-    jsr clearTxBuffer
+   ; jsr printTxBuffer
+  ;  jsr clearTxBuffer
     rts
 
 SendChar
@@ -200,8 +217,8 @@ printTxBuffer
     lda #2
     sta MMU_IO_CTRL
 _loop
-    lda txBufferSent, y
-    sta $C780,y
+    lda txbuffer, y
+    sta $C000 + (28 * 80),y
     iny
     cpy #80
     bne _loop
@@ -209,7 +226,26 @@ _loop
     lda txReady
     clc
     adc #48
-    sta $C780,y
+    sta $C000 + (28 * 80),y
+
+    iny
+    iny
+    lda mKeyPress
+    lsr
+    lsr
+    lsr
+    lsr
+    tax
+    lda m_hex,x
+    sta $C000 + (28 * 80),y
+
+
+    iny
+    lda mKeyPress
+    AND #$0F
+    tax
+    lda m_hex,x
+    sta $C000 + (28 * 80),y
 
      stz MMU_IO_CTRL
 
@@ -227,19 +263,27 @@ _loop
 RX_RD_COUNT .word       ?
 TX_WR_COUNT .word       ?
 
-prevChar
-    .byte $0
-ATString
-    .text "AT",13,10,0     ; "AT\r\n" + null terminator
 
-debugString
-    .text "DEBUG",13,10,0     ; "AT\r\n" + null terminator
+AT_WIFI_MODE
+    .text "AT+CWMODE=1",13,10,0     ; "AT\r\n" + null terminator
+AT_SINGLE_CONNECTION
+    .text "AT+CIPMUX=0",13,10,0     ; "AT\r\n" + null terminator
+AT_TRANSPARENT_MODE
+    .text "AT+CIPMODE=1",13,10,0     ; "AT\r\n" + null terminator
+AT_START_DATA_XFER
+    .text "AT+CIPSEND",13,10,0     ; "AT\r\n" + null terminator
+
+
 
 m_frames
  .byte $00
 
 m_seconds
     .byte $00
+
+m_hex
+    .text '0123456789ABCDEF'
+
 txBuffer
     .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
     .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
@@ -304,5 +348,7 @@ screenPos
 
 mlineNum
     .byte $0
+
+
 .endsection
 
