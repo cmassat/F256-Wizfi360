@@ -7,37 +7,6 @@ setDebounceTimer
     stz mKeyPress
     rts
 
-; setDebounceTimer
-;     ;set timer to 300 milliseconds
-;     lda #<3000
-;     sta $D651
-
-;     lda #>3000
-;     sta $D652
-
-;     lda #`3000
-;     sta $D653
-
-;     stz $D654 ;do not reset
-;     ;compare to  zero for count down
-;     stz $D655
-;     stz $D656
-;     stz $D657
-
-;     ;start Timer
-;     lda #%00000001
-;     sta $D650
-;     rts
-
-; handleDebounceTimer
-;     lda m_debounce
-;     cmp #0
-;     beq _end
-;     dec m_debounce
-;     rts
-; _end
-;     rts
-
 isOkToPrint
     lda m_debounce
     cmp #$00
@@ -65,7 +34,6 @@ nextLine
     rts
 
 writeToScreen
- ;   lda mKeyPress
     cmp #0
     beq _skip
     cmp #10
@@ -77,7 +45,6 @@ writeToScreen
     pha
     lda #2
     sta MMU_IO_CTRL
- ;   lda mKeyPress
     pla
     sta (SCREEN_PTR)
     #add1macro SCREEN_PTR
@@ -109,10 +76,6 @@ advanceLine
     pla
     rts
 _reset
-    ; lda screenPos
-    ; sta SCREEN_PTR
-    ; lda screenPos + 1
-    ; sta SCREEN_PTR + 1
     jsr scroll_screen
     lda #22
     sta mlineNum
@@ -177,15 +140,6 @@ _copyChar
     INX
     CPX #24
     BNE _moveRow
-
-; Clear last line (line 23)
-    ; LDX #0
-    ; ClearLastLine:
-    ; LDA #$20            ; ASCII space
-    ; STA $C000+(23*80),X
-    ; INX
-    ; CPX #80
-    ; BNE ClearLastLine
     stz MMU_IO_CTRL
     ply
     plx

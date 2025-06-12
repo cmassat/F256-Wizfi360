@@ -66,15 +66,7 @@ _handle
     lda txReady
     cmp #1
     beq _txData
-    ; lda UART_CTRL
-    ; and #CTRL_TX_EMPTY
-    ; cmp #CTRL_TX_EMPTY
- ;   beq _txData ;buffer emty, so send
-
 _handleRead
-    ; lda UART_CTRL
-    ; and #CTRL_RX_EMPTY       ; Bit 2 = TX ready
-    ; cmp #CTRL_RX_EMPTY
     jsr _rxData ;buffer not empty, so read date
   ;  bra _handle
     rts
@@ -127,25 +119,9 @@ _backup_buffer
     bra _skipBuffer
     rts
 _okToSendTx
-
-;     #add1macro TX_BUFFER_PTR
-
-;     lda #0
-;     sta (TX_BUFFER_PTR)
     lda #1
     sta  txReady
     jsr _skipBuffer
-;     jsr screen.nextLine
-;     lda #<txBuffer
-;     sta TX_BUFFER_PTR
-;     lda #>txBuffer
-;     sta TX_BUFFER_PTR + 1
-;     lda txBuffer
-;     cmp #0
-;     beq _end
-
-  ;  lda #10
-   ; jsr writeToScreen
 _end
     rts
 
@@ -174,8 +150,6 @@ _end
     ply
     stz txReady
     jsr clearTxBuffer
-   ; lda #13
-   ; jsr screen.writeToScreen
     rts
 
 SendChar
@@ -188,8 +162,6 @@ WaitTX
     pla
     sta UART_DATA
     lda #13
-   ; sta (TX_SENT_PTR)
-   ; #add1macro TX_SENT_PTR
     rts
 
 ReadResponse
@@ -199,19 +171,8 @@ _readLoop
     cmp #CTRL_RX_EMPTY
     beq _doneRead
     lda UART_DATA
-    ;cmp prevChar
-    ;beq _doneRead
-    ;sta prevChar
     jsr screen.writeToScreen
-
-  ;  sta rxBuffer,x    ; Store byte in buffer
-  ;  cmp #13               ; Check for carriage return
-  ;  beq _doneRead
-  ;  cmp #10               ; Check for carriage return
-   ; beq _doneRead
-  ;  bne _readLoop
 _doneRead     ; Null-terminate
-   ; jsr setFrameTimer
     rts
 
 clearTxBuffer
@@ -244,29 +205,12 @@ _loop
     iny
     cpy #80
     bne _loop
-;     lda mKeyPress
-
-
     iny
     lda txReady
     clc
     adc #48
     sta $C780,y
-    ; iny
-    ; lda mKeyPress
-    ; clc
-    ; adc #48
-    ; sta $C780,y
 
-    ; iny
-    ; lda screen.m_debounce
-    ; sta $C780,y
-;     ;Bottom right corner
-;     lda m_seconds
-;    ; clc
-;     adc #48
-;     iny
-;     sta $C000 + (80 * 59) + 79
      stz MMU_IO_CTRL
 
     ply
