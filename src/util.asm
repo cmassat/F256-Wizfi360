@@ -5,7 +5,6 @@ add1macro .macro address
     sta \address
 
     lda \address + 1
-    clc
     adc #0
     sta \address + 1
 

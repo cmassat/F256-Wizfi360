@@ -1,26 +1,6 @@
 .section code
-
-timer_code
-    ;lda mSOFSemaphore
-    ;eq _skip
-    ;stz mSOFSemaphore
-    ;jsr startup.handle
-    ;jsr terminal.handle
-  ;  jsr getKeyStrokes
-    ;jsr peekTXBuffer
-    ;jsr peekRXBuffer
-    ;inc m_ticks
-
-    ;jsr watch_UART_CTRL_TX
-    ; jsr watch_UART_CTRL_RX
-_skip
-    rts
-
 handleEvents
-    pha
-    phx
-    phy
-   ; jsr timer_code
+    ;jsr printTxBuffer
 _wait_for_event 
     ; Peek at the queue to see if anything is pending
     lda		kernel.args.events.pending  ; Negated count
@@ -33,56 +13,55 @@ _wait_for_event
     ; Handle the event
     jsr		_dispatch
 _done
-    ; Continue until the queue is drained.
-  ;  bra		handleEvents
-    ply
-    plx
-    pla
     rts
 
  _dispatch
-   ; Get the event's type
-    lda	event.type
 
-   ; Call the appropriate handler
-    ; cmp	 #kernel.event.mouse.CLICKS
-    ; beq	_mouse_clicked
+    lda	event.type
 
     cmp #kernel.event.key.PRESSED
     beq keyPressed
 
-    ; cmp #kernel.event.key.RELEASED
-    ; beq keyReleased
+    cmp #kernel.event.key.RELEASED
+    beq keyReleased
 
-    ; cmp #kernel.event.timer.EXPIRED
-    ; beq handleTimerEvent
-
-    ; cmp	 #kernel.event.mouse.DELTA
-    ; beq	_mouse_moved
+    cmp #kernel.event.timer.EXPIRED
+    beq handleTimerEvent
 
     rts
 
 handleTimerEvent
-    inc mSOFSemaphore
     jsr setFrameTimer
+    #add1macro m_frames
+
+    lda screen.m_debounce
+    cmp #0
+    beq _skip_debounce
+    dec screen.m_debounce
+_skip_debounce
+    lda mKeyPress
+    cmp #0
+    beq _skip
+    lda mKeyPress
+    cmp mKeyRelease
+    bne _skip
+   ; jsr getInput
+_skip
+
     rts
+
 
 keyPressed
     lda event.key.ascii
     sta mKeyPress
-    inc mKeyRelease
+_skip
     rts
 
 keyReleased
-    pha
-    phx
-    phy
-   ; lda event.key.ascii
-   ; sta mKeyRelease
-    ply
-    plx
-    pla
+    lda event.key.ascii
+    stz mKeyPress
     rts
+
 setFrameTimer
     lda #0
 	sta MMU_IO_CTRL
@@ -102,11 +81,13 @@ setFrameTimer
     rts
     
 initEvents
-
     lda #<event
     sta kernel.args.events+0
     lda #>event
     sta kernel.args.events+1
+
+    stz mKeyPress
+    stz mKeyRelease
     rts
 
 
@@ -118,6 +99,8 @@ event	.dstruct	 kernel.event.event_t
 mSOFSemaphore
     .byte $00
 mKeypress
+    .byte $00
+mKeyStatus
     .byte $00
 mKeyRelease
     .byte $00

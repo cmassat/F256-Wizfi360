@@ -1,39 +1,4 @@
-printMsgMacro .macro stringAddress
-    pha
-    phy
-    lda #<\stringAddress
-    sta stringPtr
-    lda #>\stringAddress
-    sta stringPtr+1
-
-    lda #2
-    sta MMU_IO_CTRL
-
-    ldy #0
-_loop
-    lda (stringPtr), y
-    cmp #0
-    beq _done
-    sta  $c000 + 80, y
-    iny
-    bra _loop
-_done
-    stz MMU_IO_CTRL
-    ply
-    pla
-.endmacro
-
-*= $2000
-.dsection code
-
-*= $1000
-.dsection variables
-.section code
-start
-    jmp main
-rts
-data_addr = $10000
-  ; Constants
+; Constants
 UART_CTRL  = $DD80   ; UART status/control register
 UART_DATA  = $DD81   ; UART TX/RX data register
 stringPtr = $a0
@@ -46,11 +11,24 @@ TX_BUFFER_PTR = $A0
 RX_BUFFER_PTR = TX_BUFFER_PTR + 2
 TX_SCREEN_PTR = RX_BUFFER_PTR + 2
 RX_SCREEN_PTR = TX_SCREEN_PTR + 2
+SCREEN_PTR = RX_SCREEN_PTR + 2
+TX_SENT_PTR = SCREEN_PTR + 2
+SCROLL_SRC_PTR = TX_SENT_PTR + 2
+SCROLL_DEST_PTR = SCROLL_SRC_PTR + 2
+*= $2000
+.dsection code
 
+*= $1000
+.dsection variables
+.section code
+start
+    jmp main
+    rts
 main
     jsr clearScreen
+    jsr clearTxBuffer
     stz MMU_IO_CTRL
-    stz lineNum
+
     ;INIT POINTERS
     lda #<$c000
     sta TX_SCREEN_PTR
@@ -58,33 +36,148 @@ main
     sta TX_SCREEN_PTR + 1
 
     lda screenPos
-    sta RX_SCREEN_PTR
+    sta SCREEN_PTR
     lda screenPos + 1
-    sta RX_SCREEN_PTR + 1
+    sta SCREEN_PTR + 1
+
+    lda #<txBuffer
+    sta TX_BUFFER_PTR
+    lda #>txBuffer
+    sta TX_BUFFER_PTR + 1
+
+    lda #<txBufferSent
+    sta TX_SENT_PTR
+    lda #>txBufferSent
+    sta TX_SENT_PTR + 1
+
+    stz txReady
+    lda #1
+    sta mlineNum
+
+
+    jsr initEvents
+    jsr setFrameTimer
 
 _handle
-    lda UART_CTRL
-    and #CTRL_TX_EMPTY
-    cmp #CTRL_TX_EMPTY
-    beq _txData ;buffer emty, so send
+    ;check Key Strokes
+    jsr handleEvents
+    jsr getInput
+
+    lda txReady
+    cmp #1
+    beq _txData
+    ; lda UART_CTRL
+    ; and #CTRL_TX_EMPTY
+    ; cmp #CTRL_TX_EMPTY
+ ;   beq _txData ;buffer emty, so send
 
 _handleRead
-    lda UART_CTRL
-    and #CTRL_RX_EMPTY       ; Bit 2 = TX ready
-    cmp #CTRL_RX_EMPTY
-    bne _rxData ;buffer not empty, so read date
-    bra _handle
+    ; lda UART_CTRL
+    ; and #CTRL_RX_EMPTY       ; Bit 2 = TX ready
+    ; cmp #CTRL_RX_EMPTY
+    jsr _rxData ;buffer not empty, so read date
+  ;  bra _handle
     rts
 _txData
-  ;  jsr InitUART
+    jsr sendCommand
     bra _handleRead
     rts
 _rxData
     jsr ReadResponse
     bra _handle
     rts
-
 ; Send a single character (in A)
+getInput
+    lda txReady
+    cmp #0
+    bne _skipKeyPress
+    jsr screen.isOkToPrint
+    bcs _skipKeyPress
+    lda mKeyPress
+    cmp #0
+    beq _skipKeyPress
+    lda mKeyPress
+    cmp #8
+    beq _backup_buffer
+    cmp #13  ;I think this the foenix cr/lf    not sure if #10 does anything
+    beq _okToSendTx
+    sta (TX_BUFFER_PTR)
+     #add1macro TX_BUFFER_PTR
+_skipBuffer
+    lda mKeyPress
+    jsr screen.writeToScreen
+    jsr screen.setDebounceTimer
+_skipKeyPress
+    rts
+_backup_buffer
+    pha
+    lda #0
+    sta (TX_BUFFER_PTR)
+    lda TX_BUFFER_PTR
+    sec
+    sbc #1
+    sta TX_BUFFER_PTR
+
+    lda TX_BUFFER_PTR + 1
+    sbc #0
+    sta TX_BUFFER_PTR + 1
+    lda #0
+    sta (TX_BUFFER_PTR)
+    pla
+    bra _skipBuffer
+    rts
+_okToSendTx
+
+;     #add1macro TX_BUFFER_PTR
+
+;     lda #0
+;     sta (TX_BUFFER_PTR)
+    lda #1
+    sta  txReady
+    jsr _skipBuffer
+;     jsr screen.nextLine
+;     lda #<txBuffer
+;     sta TX_BUFFER_PTR
+;     lda #>txBuffer
+;     sta TX_BUFFER_PTR + 1
+;     lda txBuffer
+;     cmp #0
+;     beq _end
+
+  ;  lda #10
+   ; jsr writeToScreen
+_end
+    rts
+
+
+
+sendCommand
+    lda #<txBuffer
+    sta TX_BUFFER_PTR
+    lda #>txBuffer
+    sta TX_BUFFER_PTR + 1
+    phy
+    ldy #0
+_loop
+    lda txBuffer, y
+    cmp #0
+    beq _end
+    jsr SendChar
+    iny
+    bra _loop
+
+_end
+    lda #13
+    jsr sendChar
+    lda #10
+    jsr sendChar
+    ply
+    stz txReady
+    jsr clearTxBuffer
+   ; lda #13
+   ; jsr screen.writeToScreen
+    rts
+
 SendChar
     pha
 WaitTX
@@ -94,113 +187,152 @@ WaitTX
     bne WaitTX
     pla
     sta UART_DATA
-    rts
-
-; Send a null-terminated string pointed to by (stringPtr)
-SendString
-    ldy #0
-NextChar
-    lda (stringPtr),y
-    beq DoneString
-    jsr SendChar
-    iny
-    bne NextChar         ; Loop until null terminator
-DoneString
-    rts
-
-; Entry point: Initialize UART and send "AT\r\n"
-InitUART
-    ; Optionally configure control settings here
-    ; (This example assumes UART is pre-initialized by firmware)
-
-    ; Set pointer to "AT\r\n"
-    lda #<ATString
-    sta stringPtr
-    lda #>ATString
-    sta stringPtr+1
-
-    jsr SendString
-    rts
-
-ReadChar
-WaitRX
-    lda UART_CTRL
-    and #CTRL_RX_EMPTY        ; Bit 0 = RX ready
-    cmp #CTRL_RX_EMPTY
-    bne _read
-    bra WaitRX
-_read
-    lda UART_DATA         ; Get received byte
+    lda #13
+   ; sta (TX_SENT_PTR)
+   ; #add1macro TX_SENT_PTR
     rts
 
 ReadResponse
 _readLoop
-    jsr ReadChar
-    sta rxBuffer,x    ; Store byte in buffer
-    cmp #$D0
-    beq _advLine
-    cmp #10               ; Check for carriage return
+    lda UART_CTRL
+    and #CTRL_RX_EMPTY        ; Bit 0 = RX ready
+    cmp #CTRL_RX_EMPTY
     beq _doneRead
-    jsr writeToScreen
-    bne _readLoop
+    lda UART_DATA
+    ;cmp prevChar
+    ;beq _doneRead
+    ;sta prevChar
+    jsr screen.writeToScreen
+
+  ;  sta rxBuffer,x    ; Store byte in buffer
+  ;  cmp #13               ; Check for carriage return
+  ;  beq _doneRead
+  ;  cmp #10               ; Check for carriage return
+   ; beq _doneRead
+  ;  bne _readLoop
 _doneRead     ; Null-terminate
+   ; jsr setFrameTimer
     rts
-_advLine
-    pha
+
+clearTxBuffer
+     pha
     phx
-    inc lineNum
-    lda lineNum
-    asl
-    tax
-    lda screenPos, x
-    sta RX_SCREEN_PTR
-    inx
-    lda screenPos, x
-    sta RX_SCREEN_PTR + 1
-    bra _readLoop
+    phy
+     ldy #0
+_loop
+    lda #0
+    sta txBuffer, y
+    iny
+    cpy #10
+    bne _loop
+    ply
     plx
     pla
     rts
 
-writeToScreen
-    cmp #10
-    beq _skip
-    cmp #13
-    beq _skip
+printTxBuffer
     pha
+    phx
+    phy
+    inc counter
+    ldy #0
     lda #2
     sta MMU_IO_CTRL
-    pla
-    sta (RX_SCREEN_PTR)
-    #add1macro RX_SCREEN_PTR
-    stz MMU_IO_CTRL
-_skip
-    rts
+_loop
+    lda txBufferSent, y
+    sta $C780,y
+    iny
+    cpy #80
+    bne _loop
+;     lda mKeyPress
 
+
+    iny
+    lda txReady
+    clc
+    adc #48
+    sta $C780,y
+    ; iny
+    ; lda mKeyPress
+    ; clc
+    ; adc #48
+    ; sta $C780,y
+
+    ; iny
+    ; lda screen.m_debounce
+    ; sta $C780,y
+;     ;Bottom right corner
+;     lda m_seconds
+;    ; clc
+;     adc #48
+;     iny
+;     sta $C000 + (80 * 59) + 79
+     stz MMU_IO_CTRL
+
+    ply
+    plx
+    pla
+    rts
+.include "./inc/kernel.asm"
 .include "util.asm"
+.include "events.asm"
+.include "screen.asm"
 .endsection
 .section variables
 ; --- Data ---
 RX_RD_COUNT .word       ?
 TX_WR_COUNT .word       ?
+
+prevChar
+    .byte $0
 ATString
-    .text "AT",10,13,0     ; "AT\r\n" + null terminator
+    .text "AT",13,10,0     ; "AT\r\n" + null terminator
 
 debugString
     .text "DEBUG",13,10,0     ; "AT\r\n" + null terminator
 
-txBufferLen = 80
+m_frames
+ .byte $00
+
+m_seconds
+    .byte $00
 txBuffer
-    .fill txBufferLen               ; Reserve 64 bytes
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 
-rxBufferLen = 1840
-rxBuffer
-    .fill rxBufferLen               ; Reserve 64 bytes
+txBufferSent
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+    .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 
-lineNum
+; rxBufferLen = 1840
+; rxBuffer
+;     .fill rxBufferLen               ; Reserve 64 bytes
+txReady
     .byte $0
+
+counter
+    .byte $0
+
 screenPos
-    .word $C000
+    .word $c000
     .word $C050
     .word $C0A0
     .word $C0F0
@@ -226,5 +358,7 @@ screenPos
     .word $C730
     .word $C780
 
+mlineNum
+    .byte $0
 .endsection
 
