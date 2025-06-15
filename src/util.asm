@@ -10,6 +10,33 @@ add1macro .macro address
 
 .endmacro
 
+pushReg .macro
+    pha
+    phx
+    phy
+.endmacro
+
+pullReg .macro
+    ply
+    plx
+    pla
+.endmacro
+
+delay
+    #pushReg
+    ldx #0
+_outer
+    ldy #0
+_loop
+    iny
+    cpy #0
+    bne _loop
+    inx
+    cpx #0
+    bne _outer
+    #pullReg
+    rts
+
 clearScreen
     lda #<$c000
     sta SCROLL_DEST_PTR

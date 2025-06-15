@@ -24,6 +24,7 @@ SCROLL_SRC_PTR = TX_SENT_PTR + 2
 SCROLL_DEST_PTR = SCROLL_SRC_PTR + 2
 POINTER_CLUT_SRC = SCROLL_DEST_PTR + 2
 POINTER_CLUT_DEST = POINTER_CLUT_SRC + 2
+MENU_BUFFER_PTR = POINTER_CLUT_DEST + 2
 *= $2000
 .dsection code
 
@@ -74,9 +75,15 @@ main
     jsr initEvents
     jsr setFrameTimer
 
+    jsr init.wiznet
+mainApp
 _handle
     ;check Key Strokes
     jsr handleEvents
+    lda mKeyPress
+    cmp #$88
+    beq _menu
+
     jsr getInput
 
     lda txReady
@@ -93,6 +100,11 @@ _txData
 _rxData
     jsr ReadResponse
     bra _handle
+    rts
+_menu
+    stz mKeyPress
+    jsr menu.show
+
     rts
 ; Send a single character (in A)
 getInput
@@ -188,8 +200,38 @@ _readLoop
     cmp #CTRL_RX_EMPTY
     beq _doneRead
     lda UART_DATA
+   ; jsr rollRxBuffer
+    cmp #$FF
+    beq _handleTelnet
     jsr screen.writeToScreen
 _doneRead     ; Null-terminate
+
+   ; jsr printRxBuffer
+    rts
+_handleTelnet
+    jsr handleTelnet
+    rts
+handleTelnet
+    jsr delay
+    lda UART_DATA
+    jsr delay
+    lda UART_DATA
+    rts
+
+rollRxBuffer
+    pha
+    ldy #0
+    ldx #1
+_loop
+    lda rxBuffer, x
+    sta rxBuffer,y
+    inx
+    iny
+    cpy #7
+    bne _loop
+    pla
+    dex
+    sta rxBuffer,x
     rts
 
 clearTxBuffer
@@ -253,10 +295,29 @@ _loop
     plx
     pla
     rts
+
+printRxBuffer
+    pha
+    phx
+    phy
+    ldy #0
+    lda #2
+    sta MMU_IO_CTRL
+_loop
+    lda rxBuffer, y
+    sta $C000 + (27 * 80),y
+    iny
+    cpy #8
+    bne _loop
+rts
 .include "./inc/kernel.asm"
+.include "./inc/keyboard.asm"
 .include "util.asm"
 .include "events.asm"
 .include "screen.asm"
+.include "init.asm"
+.include "menu.asm"
+.include "connect.asm"
 .endsection
 .section variables
 ; --- Data ---
@@ -264,16 +325,13 @@ RX_RD_COUNT .word       ?
 TX_WR_COUNT .word       ?
 
 
-AT_WIFI_MODE
-    .text "AT+CWMODE=1",13,10,0     ; "AT\r\n" + null terminator
+
 AT_SINGLE_CONNECTION
     .text "AT+CIPMUX=0",13,10,0     ; "AT\r\n" + null terminator
 AT_TRANSPARENT_MODE
     .text "AT+CIPMODE=1",13,10,0     ; "AT\r\n" + null terminator
 AT_START_DATA_XFER
     .text "AT+CIPSEND",13,10,0     ; "AT\r\n" + null terminator
-
-
 
 m_frames
  .byte $00
@@ -309,6 +367,9 @@ txBufferSent
     .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
     .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
     .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+
+rxBuffer
+    .byte $00,$00,$00,$00,$00,$00,$00,$00
 
 ; rxBufferLen = 1840
 ; rxBuffer

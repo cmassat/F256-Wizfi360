@@ -52,7 +52,6 @@ _skip
 keyPressed
     lda event.key.ascii
     sta mKeyPress
-    jsr printTxBuffer
 _skip
     rts
 
