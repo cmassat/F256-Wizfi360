@@ -1,13 +1,30 @@
 connect .namespace
 .section code 
 show
-    lda #<m_address
-    sta MENU_BUFFER_PTR
-    lda #>m_address
-    sta MENU_BUFFER_PTR + 1
     jsr clearScreen
+    jsr clearSendBuffer
     jsr printAddressPrompt
-    ;jsr getAddress
+    jsr getAddress
+    jsr printPortPrompt
+    jsr getPort
+    jsr buildCommand
+
+    jsr sendCommand
+    jsr delay
+     jsr delay
+      jsr delay
+       jsr delay
+        jsr delay
+         jsr delay
+          jsr delay
+           jsr delay
+            jsr delay
+             jsr delay
+    jsr setSendMode
+    jsr sendCommand
+    jsr printTxBuffer
+    jsr mainApp
+  ; bra show
     rts
 
 printAddressPrompt
@@ -50,69 +67,349 @@ _nextLine
     bra _loop
     rts
 
-; getAddress
-;     jsr screen.isOkToPrint
-;     bcs _skipKeyPress
-;     lda mKeyPress
-;     cmp #0
-;     beq _skipKeyPress
-;     lda mKeyPress
-;     cmp #8
-;     beq _backup_buffer
-;     cmp #13  ;I think this the foenix cr/lf    not sure if #10 does anything
-;     beq _okToSendTx
-;     sta (MENU_BUFFER_PTR)
-;     sta (SCROLL_DEST_PTR)
-;     #add1macro MENU_BUFFER_PTR
-;     #add1macro SCROLL_DEST_PTR
-; _skipBuffer
-;     lda mKeyPress
-;     jsr screen.writeToScreen
-;     jsr screen.setDebounceTimer
-; _skipKeyPress
-;     rts
-; _backup_buffer
-;     pha
-;     lda #0
-;     sta (TX_BUFFER_PTR)
-;     lda TX_BUFFER_PTR
-;     sec
-;     sbc #1
-;     sta TX_BUFFER_PTR
+;X is line number
 
-;     lda TX_BUFFER_PTR + 1
-;     sbc #0
-;     sta TX_BUFFER_PTR + 1
-;     lda #0
-;     sta (TX_BUFFER_PTR)
-;     pla
-;     bra _skipBuffer
-;     rts
-; _okToSendTx
-;     lda #0
-;     sta (TX_BUFFER_PTR)
-;     lda #1
-;     sta  txReady
-;     jsr _skipBuffer
-; _end
-;     rts
+setScreenPosition
+    txa
+    asl
+    lda screenPos,x
+    sta SCROLL_DEST_PTR
+    inx
+    lda screenPos,x
+    sta  SCROLL_DEST_PTR + 1
+    dex
+    rts
+
+printPortPrompt
+    ldx #4
+    jsr setScreenPosition
+
+    lda <#m_label_port
+    sta SCROLL_SRC_PTR
+    lda >#m_label_port
+    sta SCROLL_SRC_PTR + 1
+
+    lda #2
+    sta MMU_IO_CTRL
+_loopPort
+    lda (SCROLL_SRC_PTR)
+    cmp #0
+    beq _done
+    cmp #10
+    beq _nextLine
+    sta (SCROLL_DEST_PTR)
+    #add1macro SCROLL_SRC_PTR
+    #add1macro SCROLL_DEST_PTR
+    bra _loopPort
+_done
+    stz MMU_IO_CTRL
+    rts
+_nextLine
+    inx
+    inx
+    lda screenPos,x
+    sta SCROLL_DEST_PTR
+    inx
+    lda screenPos,x
+    sta SCROLL_DEST_PTR + 1
+    dex
+    #add1macro SCROLL_SRC_PTR
+    bra _loopPort
+    rts
+
+getAddress
+    lda #<m_address
+    sta MENU_BUFFER_PTR
+    lda #>m_address
+    sta MENU_BUFFER_PTR + 1
+    jsr setFrameTimer
+    jsr screen.setDebounceTimer
+_wait
+    jsr handleEvents
+    jsr screen.isOkToPrint
+    bcs _wait
+    lda mKeyPress
+    cmp #0
+    beq _wait
+    lda mKeyPress
+    cmp #8
+    beq _backup_buffer
+    cmp #13  ;I think this the foenix cr/lf    not sure if #10 does anything
+    beq _end
+    sta (MENU_BUFFER_PTR)
+    pha
+    lda #2
+    sta MMU_IO_CTRL
+    pla
+    sta (SCROLL_DEST_PTR)
+    stz MMU_IO_CTRL
+    #add1macro MENU_BUFFER_PTR
+    #add1macro SCROLL_DEST_PTR
+    jsr screen.setDebounceTimer
+    bra _wait
+    rts
+_backup_buffer
+    pha
+    lda #$20
+    sta (SCROLL_DEST_PTR)
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    #sub1macro SCROLL_DEST_PTR
+    #sub1macro MENU_BUFFER_PTR
+
+    lda #2
+    sta MMU_IO_CTRL
+    lda #$20
+    sta (SCROLL_DEST_PTR)
+    stz MMU_IO_CTRL
+
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    jsr screen.setDebounceTimer
+    bra _wait
+    rts
+_end
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    rts
+
+checkAddressMaxLength
+    lda #<MENU_BUFFER_PTR
+    cmp #<m_address_end
+    beq _checkHi
+    sec
+    rts
+_checkHi
+    lda #>MENU_BUFFER_PTR
+    cmp #>m_address_end
+    beq _yes
+    sec
+    rts
+_yes
+    clc
+    rts
+
+isPortMaxLength
+    lda MENU_BUFFER_PTR
+    cmp #<m_port_end
+    beq _checkHi
+    sec
+    rts
+_checkHi
+    lda MENU_BUFFER_PTR + 1
+    cmp #>m_port_end
+    beq _yes
+    sec
+    rts
+_yes
+    clc
+    rts
+
+isPortMinLength
+    lda MENU_BUFFER_PTR
+    cmp #<m_port
+    beq _checkHi
+    sec
+    rts
+_checkHi
+    lda MENU_BUFFER_PTR + 1
+    cmp #>m_port
+    beq _yes
+    sec
+    rts
+_yes
+    clc
+    rts
+
+getPort
+    lda #<m_port
+    sta MENU_BUFFER_PTR
+    lda #>m_port
+    sta MENU_BUFFER_PTR + 1
+    jsr setFrameTimer
+    jsr screen.setDebounceTimer
+_wait
+    jsr handleEvents
+    jsr screen.isOkToPrint
+    bcs _wait
+    lda mKeyPress
+    cmp #0
+    beq _wait
+    lda mKeyPress
+    cmp #8
+    beq _backup_buffer
+    cmp #13  ;I think this the foenix cr/lf    not sure if #10 does anything
+    beq _end
+    sta (MENU_BUFFER_PTR)
+    pha
+    lda #2
+    sta MMU_IO_CTRL
+    pla
+    sta (SCROLL_DEST_PTR)
+    stz MMU_IO_CTRL
+    jsr isPortMaxLength
+    bcc _noInc
+    #add1macro MENU_BUFFER_PTR
+    #add1macro SCROLL_DEST_PTR
+_noInc
+    jsr screen.setDebounceTimer
+    bra _wait
+    rts
+_backup_buffer
+    jsr backupBuffer
+    bra _wait
+_end
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    rts
+
+backupBuffer
+    jsr isPortMinLength
+    bcs _okToBackUp
+    rts
+_okToBackUp
+    lda #$20
+    sta (SCROLL_DEST_PTR)
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    lda #0
+    sta (MENU_BUFFER_PTR)
+
+    #sub1macro SCROLL_DEST_PTR
+    #sub1macro MENU_BUFFER_PTR
+
+    lda #2
+    sta MMU_IO_CTRL
+    lda #$20
+    sta (SCROLL_DEST_PTR)
+    stz MMU_IO_CTRL
+
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    jsr screen.setDebounceTimer
+   ; bra _wait
+    rts
+_end
+    rts
+
+clearSendBuffer
+    #pushReg
+    ldy #0
+    lda #0
+_loop
+    sta m_send_buffer,y
+    iny
+    cpy #0
+    bne _loop
+    #pullReg
+    rts
+
+buildCommand
+    lda #<txBuffer
+    sta MENU_BUFFER_PTR
+    lda #>txBuffer
+    sta MENU_BUFFER_PTR + 1
+
+    jsr buildTCPCommand
+    jsr buildAddress
+    jsr buildPort
+    rts
+
+buildTCPCommand
+    ldy #0
+_loop
+    lda m_AT_CONNECT, y
+    cmp #0
+    beq _end
+    sta (MENU_BUFFER_PTR)
+    iny
+    #add1macro MENU_BUFFER_PTR
+    bra _loop
+_end
+    rts
+
+buildAddress
+    ldy #0
+_loop
+    lda m_address, y
+    cmp #0
+    beq _end
+    sta (MENU_BUFFER_PTR)
+    iny
+    #add1macro MENU_BUFFER_PTR
+    bra _loop
+_end
+    lda #'"'
+    sta (MENU_BUFFER_PTR)
+    #add1macro MENU_BUFFER_PTR
+    lda #','
+    sta (MENU_BUFFER_PTR)
+    #add1macro MENU_BUFFER_PTR
+    rts
+
+buildPort
+    ldy #0
+_loop
+    lda m_port, y
+    cmp #0
+    beq _end
+    sta (MENU_BUFFER_PTR)
+    iny
+    #add1macro MENU_BUFFER_PTR
+    bra _loop
+_end
+    #add1macro MENU_BUFFER_PTR
+    rts
 
 
-
+setSendMode
+    lda #<txBuffer
+    sta MENU_BUFFER_PTR
+    lda #>txBuffer
+    sta MENU_BUFFER_PTR + 1
+   ldy #0
+_loop
+    lda m_AT_SEND, y
+    cmp #0
+    beq _end
+    sta (MENU_BUFFER_PTR)
+    iny
+    #add1macro MENU_BUFFER_PTR
+    bra _loop
+_end
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    rts
 
 .endsection 
 
 .section variables 
 .endsection
+
+m_AT_SEND
+    .text 'AT+CIPSEND',0
+
+m_AT_CONNECT
+    .text 'AT+CIPSTART="TCP","',0
+
+m_send_buffer
+    .fill 255
+
 m_address
     .fill 80
+m_address_end
+
 m_port
-    .word $00
+    .byte $00, $00, $00, $00, $00
+m_port_end
 
 m_label_address
     .text 'Enter Address: "www.somebbs.org" then hit enter',10
-    .text '?',0
+    .text '-> '
+    .byte $0
 
 m_label_port
-    .text '',0
+    .text 'Enter Port Number ',10
+    .text '-> '
+    .byte $0
 .endnamespace

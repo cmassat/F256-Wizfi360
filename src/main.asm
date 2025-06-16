@@ -259,7 +259,7 @@ printTxBuffer
     lda #2
     sta MMU_IO_CTRL
 _loop
-    lda txbuffer, y
+    lda txBuffer, y
     sta $C000 + (28 * 80),y
     iny
     cpy #80
@@ -333,8 +333,8 @@ AT_TRANSPARENT_MODE
 AT_START_DATA_XFER
     .text "AT+CIPSEND",13,10,0     ; "AT\r\n" + null terminator
 
-m_frames
- .byte $00
+; m_frames
+;  .byte $00
 
 m_seconds
     .byte $00

@@ -32,7 +32,7 @@ _done
 
 handleTimerEvent
     jsr setFrameTimer
-    #add1macro m_frames
+    ;#add1macro m_frames
 
     lda screen.m_debounce
     cmp #0

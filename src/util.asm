@@ -10,6 +10,17 @@ add1macro .macro address
 
 .endmacro
 
+sub1macro .macro address
+    lda \address
+    sec
+    sbc #1
+    sta \address
+
+    lda \address + 1
+    sbc #0
+    sta \address + 1
+.endmacro
+
 pushReg .macro
     pha
     phx
