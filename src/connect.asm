@@ -9,7 +9,7 @@ show
     jsr getPort
     jsr buildCommand
 
-    jsr sendCommand
+    jsr app.sendCommand
     jsr delay
     jsr delay
     jsr delay
@@ -21,9 +21,8 @@ show
     jsr delay
     jsr delay
     jsr setSendMode
-    jsr sendCommand
-    jsr printTxBuffer
-    jsr mainApp
+    jsr app.sendCommand
+    jsr app.mainApp
   ; bra show
     rts
 

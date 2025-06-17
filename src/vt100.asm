@@ -20,15 +20,16 @@ init
     sta VT100_ESC_PTR
     lda #>esc_buffer
     sta VT100_ESC_PTR + 1
+    jsr clearBuffer
     rts
 
-
 parseChar
+    sta currChar
     pha
     lda term_state
     beq _handleNormalChar
-   ; cmp #1
-    bra _handleESC
+    cmp #1
+    beq _handleESC
     ; cmp #2
     ; beq _handleCSI
     ; cmp #3
@@ -55,15 +56,19 @@ _handleESC
 
 ;Handle Normal Characters
 handleNormalChar
-  ;  cmp #ESC
-  ;  beq _setESCState
+    cmp #ESC
+    beq _setESCState
     ; Otherwise: printable character
  ;   jsr PrintChar      ; your routine to draw to screen
+    ;  cmp #13
+    ; beq _print
+    ; cmp #10
+    ; beq _print
     cmp #$FF
     BCS _end
 _print
     jsr screen.writeToScreen
-    jsr screen.setDebounceTimer
+    ;jsr screen.setDebounceTimer
 _end
     rts
 _setESCState
@@ -73,6 +78,8 @@ _setESCState
     jsr clearBuffer
     pla
     sta (VT100_ESC_PTR)
+   ; jsr screen.writeToScreen
+   ; jsr screen.setDebounceTimer
     #add1macro VT100_ESC_PTR
     rts
 
@@ -80,24 +87,36 @@ _setESCState
 ; Handle ESC Sequence
 handleESC
     ;lda rcv_char
-
+    lda currChar
     sta (VT100_ESC_PTR)
-    pha
+    jsr screen.writeToScreen
     #add1macro VT100_ESC_PTR
-    pla
+    lda currChar
     cmp #'m'
     beq _reset
+    lda currChar
     cmp #'B'
     beq _reset
+    lda currChar
     cmp #'J'
     beq _reset
+    lda currChar
     cmp #'H'
-    beq _reset
+    beq _H
+    lda currChar
+    cmp #'h'
+    beq _lowerh
+    lda currChar
     cmp #'C'
     beq _reset
+    lda currChar
     cmp #'n'
     beq _reset
+    lda currChar
     cmp #'u'
+    beq _reset
+    lda currChar
+    cmp #'s'
     beq _reset
     ; cmp #CSI         ; '['
     ; beq _setCSIState
@@ -106,16 +125,53 @@ handleESC
     ; ; Unknown ESC sequence
     ; lda #0
     ; sta term_state
+     jsr printTxBuffer
     rts
 _reset
     jsr resetTermState
     rts
-
+_H
+    jsr handleH
+    rts
+_lowerh
+    jsr handleLowerh
+    rts
 _setCSIState
     lda #2
     sta term_state
     rts
+handleLowerh
+    jsr resetTermState
+    rts
+handleH
+   ; lda currChar
+   ; sta (VT100_ESC_PTR)
+   ; stz seperator
+    jsr printTxBuffer
+    jsr resetTermState
+;     ldy #0
+; _loop
+;     lda esc_buffer, y
+;     cmp #'H'
+;     beq _end
+;     cmp #';'
+;     beq _seperatror
+; _next
+;     iny
+;     bne _loop
+; _end
+    lda <#$C000
+    sta SCREEN_PTR
+    lda >#$C000
+    sta SCREEN_PTR + 1
+    stz mlineNum
 
+;     jsr printTxBuffer
+;     rts
+; _seperatror
+;     inc seperator
+;     bra _next
+    rts
 ; _setESCParen
 ;     lda #3
 ;     sta term_state
@@ -197,10 +253,10 @@ resetTermState
     lda #0
     sta term_state
     ;#setPointer VT100_ESC_PTR, esc_buffer
-    lda #<esc_buffer
-    sta VT100_ESC_PTR
-    lda #>esc_buffer
-    sta VT100_ESC_PTR + 1
+     lda #<esc_buffer
+     sta VT100_ESC_PTR
+     lda #>esc_buffer
+     sta VT100_ESC_PTR + 1
     rts
 
 clearBuffer
@@ -220,7 +276,7 @@ _loop
 .section variables
 
 
-
+seperator       .byte  0
 term_state      .byte  0       ; current parser state
 cursor_row      .byte  0       ; current row
 cursor_col      .byte  0       ; current column
@@ -228,6 +284,34 @@ tmp_row         .byte  0       ; for parsing ESC [ r ; c H
 tmp_col         .byte  0
 parse_val       .byte  0       ; for building numbers
 use_alt_charset .byte  0       ; flag for line drawing
+
+  .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+ .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+     .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+     .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+     .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+     .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .byte $00, $00, $00, $00, $00, $00, $00, $00
+
+currChar
+    .byte $00
 esc_buffer
     .byte $00, $00, $00, $00, $00, $00, $00, $00
     .byte $00, $00, $00, $00, $00, $00, $00, $00

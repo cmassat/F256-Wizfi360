@@ -2,30 +2,12 @@
 UART_CTRL  = $DD80   ; UART status/control register
 UART_DATA  = $DD81   ; UART TX/RX data register
 stringPtr = $a0
-MMU_MEM_CTRL = $0000
-MMU_IO_CTRL = $0001
-CLUT_IO = $0001
-CLUT_FOR = $D800
-CLUT_BCK = $D840
-CLUT_0_ADDR = $D000
-CLUT_1_ADDR = $D400
-CLUT_2_ADDR = $D800
-CLUT_3_ADDR = $DC00
+
+
 CTRL_FAST       =   1
 CTRL_RX_EMPTY   =   2
 CTRL_TX_EMPTY   =   4
-TX_BUFFER_PTR = $A0
-RX_BUFFER_PTR = TX_BUFFER_PTR + 2
-TX_SCREEN_PTR = RX_BUFFER_PTR + 2
-RX_SCREEN_PTR = TX_SCREEN_PTR + 2
-SCREEN_PTR = RX_SCREEN_PTR + 2
-TX_SENT_PTR = SCREEN_PTR + 2
-SCROLL_SRC_PTR = TX_SENT_PTR + 2
-SCROLL_DEST_PTR = SCROLL_SRC_PTR + 2
-POINTER_CLUT_SRC = SCROLL_DEST_PTR + 2
-POINTER_CLUT_DEST = POINTER_CLUT_SRC + 2
-MENU_BUFFER_PTR = POINTER_CLUT_DEST + 2
-VT100_ESC_PTR = MENU_BUFFER_PTR + 2
+
 *= $2000
 .dsection code
 
@@ -44,7 +26,7 @@ main
     ora #%00000100
     sta $D001
     jsr clearScreen
-    jsr clearTxBuffer
+    jsr app.clearTxBuffer
     stz MMU_IO_CTRL
 
     jsr vt100.init
@@ -79,187 +61,11 @@ main
     jsr setFrameTimer
 
     jsr init.wiznet
-mainApp
-_handle
-    jsr printTxBuffer
-    ;check Key Strokes
-    jsr handleEvents
-    lda mKeyPress
-    cmp #$88
-    beq _menu
-
-    jsr getInput
-
-    lda txReady
-    cmp #1
-    beq _txData
-_handleRead
-    jsr _rxData ;buffer not empty, so read date
-  ;  bra _handle
-    rts
-_txData
-    jsr sendCommand
-    bra _handleRead
-    rts
-_rxData
-    jsr ReadResponse
-    bra _handle
-    rts
-_menu
-    stz mKeyPress
-    jsr menu.show
-
-    rts
-; Send a single character (in A)
-getInput
-    lda txReady
-    cmp #0
-    bne _skipKeyPress
-    jsr screen.isOkToPrint
-    bcs _skipKeyPress
-    lda mKeyPress
-    cmp #0
-    beq _skipKeyPress
-    lda mKeyPress
-    cmp #8
-    beq _backup_buffer
-    cmp #13  ;I think this the foenix cr/lf    not sure if #10 does anything
-    beq _okToSendTx
-    sta (TX_BUFFER_PTR)
-     #add1macro TX_BUFFER_PTR
-_skipBuffer
-    lda mKeyPress
-     jsr screen.writeToScreen
-     jsr screen.setDebounceTimer
-_skipKeyPress
-    rts
-_backup_buffer
-    pha
-    lda #0
-    sta (TX_BUFFER_PTR)
-    lda TX_BUFFER_PTR
-    sec
-    sbc #1
-    sta TX_BUFFER_PTR
-
-    lda TX_BUFFER_PTR + 1
-    sbc #0
-    sta TX_BUFFER_PTR + 1
-    lda #0
-    sta (TX_BUFFER_PTR)
-    pla
-    bra _skipBuffer
-    rts
-_okToSendTx
-    lda #0
-    sta (TX_BUFFER_PTR)
-    lda #1
-    sta  txReady
-    jsr _skipBuffer
-_end
-    rts
-
-sendCommand
-    lda #<txBuffer
-    sta TX_BUFFER_PTR
-    lda #>txBuffer
-    sta TX_BUFFER_PTR + 1
-    phy
-    ldy #0
-_loop
-    lda txBuffer, y
-    cmp #0
-    beq _end
-    jsr SendChar
-    iny
-    bra _loop
-
-_end
-    lda #13
-    jsr sendChar
-    lda #10
-    jsr sendChar
-    ply
-    stz txReady
-   ; jsr printTxBuffer
-  ;  jsr clearTxBuffer
-    rts
-
-SendChar
-    pha
-WaitTX
-    lda UART_CTRL
-    and #CTRL_TX_EMPTY       ; Bit 2 = TX ready
-    cmp #CTRL_TX_EMPTY
-    bne WaitTX
-    pla
-    sta UART_DATA
-    lda #13
-    rts
-
-ReadResponse
-_readLoop
-    lda UART_CTRL
-    and #CTRL_RX_EMPTY        ; Bit 0 = RX ready
-    cmp #CTRL_RX_EMPTY
-    beq _doneRead
-    lda UART_DATA
-  ;  lda mKeyPress
-    jsr vt100.parseChar
-   ; jsr rollRxBuffer
-   ; cmp #$FF
-   ; beq _handleTelnet
-   ; jsr screen.writeToScreen
-_doneRead     ; Null-terminate
-
-   ; jsr printRxBuffer
-    rts
-_handleTelnet
-    jsr handleTelnet
-    rts
-handleTelnet
-    jsr delay
-    lda UART_DATA
-    jsr delay
-    lda UART_DATA
-    rts
-
-rollRxBuffer
-    pha
-    ldy #0
-    ldx #1
-_loop
-    lda rxBuffer, x
-    sta rxBuffer,y
-    inx
-    iny
-    cpy #7
-    bne _loop
-    pla
-    dex
-    sta rxBuffer,x
-    rts
-
-clearTxBuffer
-     pha
-    phx
-    phy
-     ldy #0
-_loop
-    lda #0
-    sta txBuffer, y
-    iny
-    cpy #10
-    bne _loop
-    ply
-    plx
-    pla
+    jsr app.mainApp
     rts
 
 printTxBuffer
-    pha
-    phx
-    phy
+    #pushReg
     inc counter
     ldy #0
     lda #2
@@ -268,54 +74,58 @@ _loop
     lda vt100.esc_buffer, y
     sta $C000 + (28 * 80),y
     iny
-    cpy #80
+    cpy #10
     bne _loop
-    iny
-    lda txReady
-    clc
-    adc #48
-    sta $C000 + (28 * 80),y
+    ;iny
+    ; lda txReady
+    ; clc
+    ; adc #48
+    ; sta $C000 + (28 * 80),y
 
     iny
     iny
-    lda vt100.term_state
+    iny
+    iny
+    iny
+    iny
+    ldx #0
+    lda vt100.esc_buffer, x
     lsr
     lsr
     lsr
     lsr
     tax
     lda m_hex,x
-    sta $C000 + (28 * 80),y
+    sta $C000 + (26 * 80),y
 
 
     iny
-    lda vt100.term_state
+    ldx #0
+    lda vt100.esc_buffer,x
     AND #$0F
     tax
     lda m_hex,x
-    sta $C000 + (28 * 80),y
+    sta $C000 + (26 * 80),y
 
      stz MMU_IO_CTRL
 
-    ply
-    plx
-    pla
+    #pullReg
     rts
 
-printRxBuffer
-    pha
-    phx
-    phy
-    ldy #0
-    lda #2
-    sta MMU_IO_CTRL
-_loop
-    lda rxBuffer, y
-    sta $C000 + (27 * 80),y
-    iny
-    cpy #8
-    bne _loop
-rts
+; printRxBuffer
+;     pha
+;     phx
+;     phy
+;     ldy #0
+;     lda #2
+;     sta MMU_IO_CTRL
+; _loop
+;     lda rxBuffer, y
+;     sta $C000 + (27 * 80),y
+;     iny
+;     cpy #8
+;     bne _loop
+; rts
 .include "./inc/kernel.asm"
 .include "./inc/keyboard.asm"
 .include "util.asm"
@@ -325,11 +135,14 @@ rts
 .include "menu.asm"
 .include "connect.asm"
 .include "vt100.asm"
+.include "app.asm"
+.include "./inc/video.asm"
+.include "./inc/F256.asm"
+.include "./inc/bitmap.asm"
 .endsection
 .section variables
 ; --- Data ---
-RX_RD_COUNT .word       ?
-TX_WR_COUNT .word       ?
+
 
 
 
@@ -346,8 +159,7 @@ AT_START_DATA_XFER
 m_seconds
     .byte $00
 
-m_hex
-    .text '0123456789ABCDEF'
+
 
 txBuffer
     .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
@@ -420,5 +232,5 @@ mlineNum
 
 .endsection
 
-; *= 10000
-;  .include "font.asm"
+; *= $20000
+; .include "font.asm"

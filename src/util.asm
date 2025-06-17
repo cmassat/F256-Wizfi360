@@ -174,3 +174,7 @@ default_clut_palette
     .byte 187, 187, 187,0   ; light grey f
     .byte 0, 0, 0 ,0        ; black 0
 default_clut_palette_end
+
+
+m_hex
+    .text '0123456789ABCDEF'

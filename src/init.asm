@@ -23,7 +23,7 @@ _done_wiFi
     iny
     lda #0
     sta txBuffer,y
-    jsr sendCommand
+    jsr app.sendCommand
     #pullReg
     rts
 
@@ -41,7 +41,7 @@ _done_wiFi
     iny
     lda #0
     sta txBuffer,y
-    jsr sendCommand
+    jsr app.sendCommand
     #pullReg
     rts
 
@@ -60,7 +60,7 @@ _done_wiFi
     iny
     lda #0
     sta txBuffer,y
-    jsr sendCommand
+    jsr app.sendCommand
     #pullReg
     rts
 

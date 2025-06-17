@@ -1,6 +1,15 @@
 menu .namespace
 .section code
 show
+    ;text mode
+    lda #1
+    sta $D000
+
+    ;Double Font
+    lda $D001
+    ora #%00000100
+    sta $D001
+    jsr clearScreen
     jsr clearScreen
     jsr printMenu
 
@@ -17,7 +26,7 @@ _terminal
     stz mKeyPress
     jsr clearScreen
     jsr init.screen
-    jsr mainApp
+    jsr app.mainApp
     rts
 _connect
     jsr connect.show
