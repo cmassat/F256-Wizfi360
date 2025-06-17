@@ -11,15 +11,15 @@ show
 
     jsr sendCommand
     jsr delay
-     jsr delay
-      jsr delay
-       jsr delay
-        jsr delay
-         jsr delay
-          jsr delay
-           jsr delay
-            jsr delay
-             jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
     jsr setSendMode
     jsr sendCommand
     jsr printTxBuffer
@@ -149,11 +149,11 @@ _wait
     bra _wait
     rts
 _backup_buffer
-    pha
     lda #$20
     sta (SCROLL_DEST_PTR)
     lda #0
     sta (MENU_BUFFER_PTR)
+
     #sub1macro SCROLL_DEST_PTR
     #sub1macro MENU_BUFFER_PTR
 
@@ -166,7 +166,23 @@ _backup_buffer
     lda #0
     sta (MENU_BUFFER_PTR)
     jsr screen.setDebounceTimer
-    bra _wait
+    ; lda #$20
+    ; sta (SCROLL_DEST_PTR)
+    ; lda #0
+    ; sta (MENU_BUFFER_PTR)
+    ; #sub1macro SCROLL_DEST_PTR
+    ; #sub1macro MENU_BUFFER_PTR
+
+    ; lda #2
+    ; sta MMU_IO_CTRL
+    ; lda #$20
+    ; sta (SCROLL_DEST_PTR)
+    ; stz MMU_IO_CTRL
+
+    ; lda #0
+    ; sta (MENU_BUFFER_PTR)
+    ; jsr screen.setDebounceTimer
+     bra _wait
     rts
 _end
     lda #0

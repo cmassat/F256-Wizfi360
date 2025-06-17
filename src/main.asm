@@ -25,6 +25,7 @@ SCROLL_DEST_PTR = SCROLL_SRC_PTR + 2
 POINTER_CLUT_SRC = SCROLL_DEST_PTR + 2
 POINTER_CLUT_DEST = POINTER_CLUT_SRC + 2
 MENU_BUFFER_PTR = POINTER_CLUT_DEST + 2
+VT100_ESC_PTR = MENU_BUFFER_PTR + 2
 *= $2000
 .dsection code
 
@@ -45,6 +46,8 @@ main
     jsr clearScreen
     jsr clearTxBuffer
     stz MMU_IO_CTRL
+
+    jsr vt100.init
 
     ;INIT POINTERS
     lda #<$c000
@@ -78,6 +81,7 @@ main
     jsr init.wiznet
 mainApp
 _handle
+    jsr printTxBuffer
     ;check Key Strokes
     jsr handleEvents
     lda mKeyPress
@@ -125,8 +129,8 @@ getInput
      #add1macro TX_BUFFER_PTR
 _skipBuffer
     lda mKeyPress
-    jsr screen.writeToScreen
-    jsr screen.setDebounceTimer
+     jsr screen.writeToScreen
+     jsr screen.setDebounceTimer
 _skipKeyPress
     rts
 _backup_buffer
@@ -200,10 +204,12 @@ _readLoop
     cmp #CTRL_RX_EMPTY
     beq _doneRead
     lda UART_DATA
+  ;  lda mKeyPress
+    jsr vt100.parseChar
    ; jsr rollRxBuffer
-    cmp #$FF
-    beq _handleTelnet
-    jsr screen.writeToScreen
+   ; cmp #$FF
+   ; beq _handleTelnet
+   ; jsr screen.writeToScreen
 _doneRead     ; Null-terminate
 
    ; jsr printRxBuffer
@@ -259,7 +265,7 @@ printTxBuffer
     lda #2
     sta MMU_IO_CTRL
 _loop
-    lda txBuffer, y
+    lda vt100.esc_buffer, y
     sta $C000 + (28 * 80),y
     iny
     cpy #80
@@ -272,7 +278,7 @@ _loop
 
     iny
     iny
-    lda mKeyPress
+    lda vt100.term_state
     lsr
     lsr
     lsr
@@ -283,7 +289,7 @@ _loop
 
 
     iny
-    lda mKeyPress
+    lda vt100.term_state
     AND #$0F
     tax
     lda m_hex,x
@@ -318,6 +324,7 @@ rts
 .include "init.asm"
 .include "menu.asm"
 .include "connect.asm"
+.include "vt100.asm"
 .endsection
 .section variables
 ; --- Data ---
@@ -413,3 +420,5 @@ mlineNum
 
 .endsection
 
+; *= 10000
+;  .include "font.asm"

@@ -37,7 +37,7 @@ writeToScreen
     cmp #0
     beq _skip
     cmp #10
-    beq _advLine
+    beq _skip
     cmp #13
     beq _advLine
     cmp #8

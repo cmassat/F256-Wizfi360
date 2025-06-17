@@ -27,6 +27,14 @@ pushReg .macro
     phy
 .endmacro
 
+
+setPointer .macro pointer, address
+    lda <#\address
+    sta \pointer
+    lda >#\address
+    sta \pointer + 1
+.endmacro
+
 pullReg .macro
     ply
     plx
