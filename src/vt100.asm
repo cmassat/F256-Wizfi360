@@ -16,10 +16,8 @@ vt100 .namespace
 
 init
     jsr resetTermState
-    lda #<esc_buffer
-    sta VT100_ESC_PTR
-    lda #>esc_buffer
-    sta VT100_ESC_PTR + 1
+    stz cursor_row
+    stz cursor_col
     jsr clearBuffer
     rts
 
@@ -30,11 +28,6 @@ parseChar
     beq _handleNormalChar
     cmp #1
     beq _handleESC
-    ; cmp #2
-    ; beq _handleCSI
-    ; cmp #3
-    ; beq _handleESCParen
-   ; pla
     rts
 _handleNormalChar
     pla
@@ -44,31 +37,15 @@ _handleESC
     pla
     jsr handleESC
     rts
-; _handleCSI
-;     pla
-;     jsr handleCSI
-;     rts
-; _handleESCParen
-;     pla
-;     jsr handleESCParen
-    rts
-
 
 ;Handle Normal Characters
 handleNormalChar
     cmp #ESC
     beq _setESCState
-    ; Otherwise: printable character
- ;   jsr PrintChar      ; your routine to draw to screen
-    ;  cmp #13
-    ; beq _print
-    ; cmp #10
-    ; beq _print
     cmp #$FF
     BCS _end
 _print
     jsr screen.writeToScreen
-    ;jsr screen.setDebounceTimer
 _end
     rts
 _setESCState
@@ -78,8 +55,6 @@ _setESCState
     jsr clearBuffer
     pla
     sta (VT100_ESC_PTR)
-   ; jsr screen.writeToScreen
-   ; jsr screen.setDebounceTimer
     #add1macro VT100_ESC_PTR
     rts
 
@@ -125,7 +100,7 @@ handleESC
     ; ; Unknown ESC sequence
     ; lda #0
     ; sta term_state
-     jsr printTxBuffer
+    ; jsr printTxBuffer
     rts
 _reset
     jsr resetTermState
@@ -144,110 +119,11 @@ handleLowerh
     jsr resetTermState
     rts
 handleH
-   ; lda currChar
-   ; sta (VT100_ESC_PTR)
-   ; stz seperator
-    jsr printTxBuffer
+   ; jsr printTxBuffer
     jsr resetTermState
-;     ldy #0
-; _loop
-;     lda esc_buffer, y
-;     cmp #'H'
-;     beq _end
-;     cmp #';'
-;     beq _seperatror
-; _next
-;     iny
-;     bne _loop
-; _end
-    lda <#$C000
-    sta SCREEN_PTR
-    lda >#$C000
-    sta SCREEN_PTR + 1
-    stz mlineNum
-
-;     jsr printTxBuffer
-;     rts
-; _seperatror
-;     inc seperator
-;     bra _next
+    stz cursor_row
+    stz cursor_col
     rts
-; _setESCParen
-;     lda #3
-;     sta term_state
-;     rts
-;
-; CSI
-;
-; handleCSI
-;     cmp #'m'
-;     beq _done
-;    ; lda rcv_char
-;     cmp #'0'
-;     bcc CheckCSICommand
-;     cmp #'9'+1
-;     bcs CheckCSICommand
-;     ; It's a digit
-;     sec
-;     sbc #'0'
-;     asl parse_val
-;     asl parse_val
-;     adc parse_val
-;     sta parse_val
-;     rts
-; _done
-;     lda #0
-;     sta (VT100_ESC_PTR)
-;     jsr resetTermState
-;     rts
-
-; CheckCSICommand
-;     cmp #';'
-;     bne NotSemicolon
-;     lda parse_val
-;     sta tmp_row
-;     lda #0
-;     sta parse_val
-;     rts
-
-; NotSemicolon
-;     cmp #'H'
-;     bne NotH
-;     lda #<$c000
-;     sta TX_SCREEN_PTR
-;     lda #>$c000
-;     sta TX_SCREEN_PTR + 1
-;     ; lda parse_val
-;     ; sta tmp_col
-;     ; lda tmp_row
-;     ; sta cursor_row
-;     ; lda tmp_col
-;     ; sta cursor_col
-;     jmp ResetTermState
-
-; NotH
-;     cmp #J
-;     bne ResetTermState
-;     lda parse_val
-;     cmp #2
-;     bne ResetTermState
-;     jsr ClearScreen
-;     jmp ResetTermState
-;lda
-;     cmp #B
-;     beq SetASCIICharset
-;     ; unknown
-;     jmp ResetTermState
-
-; SetAltCharset
-;     lda #1
-;     sta use_alt_charset
-;     jmp ResetTermState
-
-; SetASCIICharset
-;     lda #0
-;     sta use_alt_charset
-;     jmp ResetTermState
 
 resetTermState
     lda #0

@@ -25,7 +25,7 @@ mainApp
 
 
 _handle
-    jsr printTxBuffer
+    ;jsr printTxBuffer
     ;check Key Strokes
     jsr handleEvents
     lda mKeyPress
