@@ -41,6 +41,24 @@ pullReg .macro
     pla
 .endmacro
 
+
+; input 
+;   no inputs, A register is destructive
+; output 
+;   A register will have the UART_DATA
+read_uart_data
+    lda UART_CTRL
+    and #CTRL_RX_EMPTY        ; mask for the RX empty bit
+    cmp #CTRL_RX_EMPTY        ; loop while buffer is empty
+    beq _doneRead
+
+    lda UART_DATA
+    clc 
+    rts
+_doneRead
+    sec 
+    rts
+
 delay
     #pushReg
     ldx #0
@@ -168,7 +186,7 @@ default_clut_palette
     .byte 0, 68, 192,0      ; brown 9
     .byte 119, 119, 255,0   ; light red a
     .byte 51, 51, 51,0      ; dark grey b
-    .byte 119, 119, 119,0   ; grey c
+    .byte 119, 119, 119,0   ; grey c  bright black
     .byte 102, 255, 119, 0  ; light green d
     .byte 255, 136,0,0      ; light blue e
     .byte 187, 187, 187,0   ; light grey f

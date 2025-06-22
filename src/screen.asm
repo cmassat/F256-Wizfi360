@@ -47,6 +47,10 @@ writeToScreen
     sta MMU_IO_CTRL
     pla
     sta (SCREEN_PTR)
+    lda #3
+    sta MMU_IO_CTRL
+    lda vt100.scr_color
+    sta (SCREEN_PTR) 
     #add1macro SCREEN_PTR
 _skip
     stz MMU_IO_CTRL
@@ -130,6 +134,13 @@ scroll_screen
 _moveRow
     LDY #0              ; X = column
 _copyChar
+    lda #2
+    sta MMU_IO_CTRL
+    LDA (SCROLL_SRC_PTR)    ; Load from next line
+    STA (SCROLL_DEST_PTR)     ; Store into current line
+
+    lda #3 
+    sta MMU_IO_CTRL
     LDA (SCROLL_SRC_PTR)    ; Load from next line
     STA (SCROLL_DEST_PTR)     ; Store into current line
     #add1macro SCROLL_SRC_PTR

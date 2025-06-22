@@ -25,7 +25,7 @@ mainApp
 
 
 _handle
-    ;jsr printTxBuffer
+    jsr printTxBuffer
     ;check Key Strokes
     jsr handleEvents
     lda mKeyPress
@@ -143,11 +143,13 @@ WaitTX
 
 ReadResponse
 _readLoop
-    lda UART_CTRL
-    and #CTRL_RX_EMPTY        ; Bit 0 = RX ready
-    cmp #CTRL_RX_EMPTY
-    beq _doneRead
-    lda UART_DATA
+    jsr read_uart_data
+    bcs _doneRead
+    ;lda UART_CTRL
+    ;and #CTRL_RX_EMPTY        ; Bit 0 = RX ready
+     ;cmp #CTRL_RX_EMPTY
+     ;beq _doneRead
+     ;lda UART_DATA
   ;  lda mKeyPress
     jsr vt100.parseChar
    ; jsr rollRxBuffer
@@ -158,15 +160,15 @@ _doneRead     ; Null-terminate
 
    ; jsr printRxBuffer
     rts
-_handleTelnet
-    jsr handleTelnet
-    rts
-handleTelnet
-    jsr delay
-    lda UART_DATA
-    jsr delay
-    lda UART_DATA
-    rts
+; _handleTelnet
+;     jsr handleTelnet
+;     rts
+; handleTelnet
+;     jsr delay
+;     lda UART_DATA
+;     jsr delay
+;     lda UART_DATA
+;     rts
 
 rollRxBuffer
     pha

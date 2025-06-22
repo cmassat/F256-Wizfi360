@@ -107,6 +107,12 @@ _loop
     lda m_hex,x
     sta $C000 + (26 * 80),y
 
+
+    lda telnetState
+    clc 
+    adc #48
+    sta $C000 + (25 * 80)
+
      stz MMU_IO_CTRL
 
     #pullReg
@@ -136,6 +142,7 @@ _loop
 .include "connect.asm"
 .include "vt100.asm"
 .include "app.asm"
+.include "telnet.asm"
 .include "./inc/video.asm"
 .include "./inc/F256.asm"
 .include "./inc/bitmap.asm"
