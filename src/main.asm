@@ -18,6 +18,7 @@ start
     jmp main
     rts
 main
+    stz mIsInit
     ;jsr clut_default_color
     jsr clut_default_for
     jsr clut_default_bck
@@ -37,10 +38,6 @@ main
     lda #>$c000
     sta TX_SCREEN_PTR + 1
 
-    lda screenPos
-    sta SCREEN_PTR
-    lda screenPos + 1
-    sta SCREEN_PTR + 1
 
     lda #<txBuffer
     sta TX_BUFFER_PTR
@@ -66,7 +63,6 @@ main
 
 printTxBuffer
     #pushReg
-    inc counter
     ldy #0
     lda #2
     sta MMU_IO_CTRL
@@ -76,43 +72,6 @@ _loop
     iny
     cpy #10
     bne _loop
-    ;iny
-    ; lda txReady
-    ; clc
-    ; adc #48
-    ; sta $C000 + (28 * 80),y
-
-    iny
-    iny
-    iny
-    iny
-    iny
-    iny
-    ldx #0
-    lda vt100.esc_buffer, x
-    lsr
-    lsr
-    lsr
-    lsr
-    tax
-    lda m_hex,x
-    sta $C000 + (26 * 80),y
-
-
-    iny
-    ldx #0
-    lda vt100.esc_buffer,x
-    AND #$0F
-    tax
-    lda m_hex,x
-    sta $C000 + (26 * 80),y
-
-
-    lda telnetState
-    clc 
-    adc #48
-    sta $C000 + (25 * 80)
-
      stz MMU_IO_CTRL
 
     #pullReg
@@ -152,7 +111,8 @@ _loop
 
 
 
-
+mIsInit 
+    .byte $00
 AT_SINGLE_CONNECTION
     .text "AT+CIPMUX=0",13,10,0     ; "AT\r\n" + null terminator
 AT_TRANSPARENT_MODE
@@ -206,32 +166,7 @@ txReady
 counter
     .byte $0
 
-screenPos
-    .word $c000
-    .word $C050
-    .word $C0A0
-    .word $C0F0
-    .word $C140
-    .word $C190
-    .word $C1E0
-    .word $C230
-    .word $C280
-    .word $C2D0
-    .word $C320
-    .word $C370
-    .word $C3C0
-    .word $C410
-    .word $C460
-    .word $C4B0
-    .word $C500
-    .word $C550
-    .word $C5A0
-    .word $C5F0
-    .word $C640
-    .word $C690
-    .word $C6E0
-    .word $C730
-    .word $C780
+
 
 mlineNum
     .byte $0

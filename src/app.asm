@@ -1,32 +1,10 @@
 app .namespace
 .section code
 mainApp
-    ; lda #%00001101
-    ; sta $d000
-
-    ; jsr clearVideo
-    ; jsr enableGrafix
-    ; jsr enableBitmap
-    ; jsr setVideo
-
-    ; jsr clearLayers
-    ; jsr enableBitmapLayer0
-    ; jsr setLayers
-
-    ; lda #0
-    ; jsr setBitmapNumber
-
-    ; lda <#$10000
-    ; ldx >#$10000
-    ; ldy `#$10000
-    ; jsr setBitmapAddress
-
-    ; jsr showBitmap
-
+   lda #1
+   sta mIsInit
 
 _handle
-    jsr printTxBuffer
-    ;check Key Strokes
     jsr handleEvents
     lda mKeyPress
     cmp #$88
@@ -91,6 +69,7 @@ _backup_buffer
     sta TX_BUFFER_PTR + 1
     lda #0
     sta (TX_BUFFER_PTR)
+    dec vt100.cursor_col
     pla
     bra _skipBuffer
     rts
@@ -125,8 +104,6 @@ _end
     jsr sendChar
     ply
     stz txReady
-   ; jsr printTxBuffer
-  ;  jsr clearTxBuffer
     rts
 
 SendChar
@@ -145,30 +122,9 @@ ReadResponse
 _readLoop
     jsr read_uart_data
     bcs _doneRead
-    ;lda UART_CTRL
-    ;and #CTRL_RX_EMPTY        ; Bit 0 = RX ready
-     ;cmp #CTRL_RX_EMPTY
-     ;beq _doneRead
-     ;lda UART_DATA
-  ;  lda mKeyPress
     jsr vt100.parseChar
-   ; jsr rollRxBuffer
-   ; cmp #$FF
-   ; beq _handleTelnet
-   ; jsr screen.writeToScreen
 _doneRead     ; Null-terminate
-
-   ; jsr printRxBuffer
     rts
-; _handleTelnet
-;     jsr handleTelnet
-;     rts
-; handleTelnet
-;     jsr delay
-;     lda UART_DATA
-;     jsr delay
-;     lda UART_DATA
-;     rts
 
 rollRxBuffer
     pha

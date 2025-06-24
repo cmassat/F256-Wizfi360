@@ -25,12 +25,13 @@ _loop
 _terminal
     stz mKeyPress
     jsr clearScreen
-    jsr init.screen
+    jsr init.screenInit
     jsr app.mainApp
     rts
 _connect
     jsr connect.show
     rts
+    
 printMenu
     lda <#m_option_00
     sta SCROLL_SRC_PTR
@@ -61,10 +62,10 @@ _done
 _nextLine
     inx
     inx
-    lda screenPos,x
+    lda screen.screenPos,x
     sta SCROLL_DEST_PTR
     inx
-    lda screenPos,x
+    lda screen.screenPos,x
     sta SCROLL_DEST_PTR + 1
     dex
     #add1macro SCROLL_SRC_PTR

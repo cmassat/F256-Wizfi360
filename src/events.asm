@@ -1,6 +1,6 @@
 .section code
 handleEvents
-    ;jsr printTxBuffer
+
 _wait_for_event 
     ; Peek at the queue to see if anything is pending
     lda		kernel.args.events.pending  ; Negated count

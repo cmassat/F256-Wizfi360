@@ -7,7 +7,7 @@ STATE_COMMAND = 0
 STATE_OPTION = 1
 .section code 
 handleTelnet
-    jsr printTxBuffer
+    
     jsr read_uart_data
     bcs _end 
     sta telnetCommand 

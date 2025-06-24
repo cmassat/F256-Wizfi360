@@ -22,6 +22,17 @@ show
     jsr delay
     jsr setSendMode
     jsr app.sendCommand
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr delay
+    jsr clearScreen
     jsr app.mainApp
   ; bra show
     rts
@@ -56,10 +67,10 @@ _done
 _nextLine
     inx
     inx
-    lda screenPos,x
+    lda screen.screenPos,x
     sta SCROLL_DEST_PTR
     inx
-    lda screenPos,x
+    lda screen.screenPos,x
     sta SCROLL_DEST_PTR + 1
     dex
     #add1macro SCROLL_SRC_PTR
@@ -71,10 +82,10 @@ _nextLine
 setScreenPosition
     txa
     asl
-    lda screenPos,x
+    lda screen.screenPos,x
     sta SCROLL_DEST_PTR
     inx
-    lda screenPos,x
+    lda screen.screenPos,x
     sta  SCROLL_DEST_PTR + 1
     dex
     rts
@@ -106,10 +117,10 @@ _done
 _nextLine
     inx
     inx
-    lda screenPos,x
+    lda screen.screenPos,x
     sta SCROLL_DEST_PTR
     inx
-    lda screenPos,x
+    lda screen.screenPos,x
     sta SCROLL_DEST_PTR + 1
     dex
     #add1macro SCROLL_SRC_PTR
@@ -283,6 +294,8 @@ backupBuffer
     bcs _okToBackUp
     rts
 _okToBackUp
+    jsr screen.isOkToPrint
+    bcs _wait
     lda #$20
     sta (SCROLL_DEST_PTR)
     lda #0
@@ -302,7 +315,7 @@ _okToBackUp
     lda #0
     sta (MENU_BUFFER_PTR)
     jsr screen.setDebounceTimer
-   ; bra _wait
+_wait
     rts
 _end
     rts

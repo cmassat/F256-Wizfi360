@@ -18,8 +18,9 @@ vt100 .namespace
 
 init
     jsr resetTermState
-    stz cursor_row
-    stz cursor_col
+    lda #1 
+    sta cursor_row
+    sta cursor_col
     jsr clearBuffer
     rts
 
@@ -64,6 +65,7 @@ _setESCState
     jsr clearBuffer
     lda currChar
     sta (VT100_ESC_PTR)
+    jsr screen.writeToScreen
     #add1macro VT100_ESC_PTR
     rts
 _setTelnet
@@ -83,68 +85,49 @@ handleESC
     sta (VT100_ESC_PTR)
    ; jsr screen.writeToScreen
     #add1macro VT100_ESC_PTR
+    
+    jsr escape_A.handle
+    bcc _reset
+    
+    jsr escape_B.handle
+    bcc _reset
+    
+    jsr escape_C.handle
+    bcc _reset
+    
+    jsr escape_D.handle
+    bcc _reset 
+    
+    jsr escape_E.handle
+    bcc _reset 
+
+    jsr escape_F.handle
+    bcc _reset 
+
+    jsr escape_G.handle
+    bcc _reset 
+
+    jsr escape_H.handle
+    bcc _reset 
+
+    jsr escape_J.handle
+    bcc _reset 
+    jsr escape_catch.handle
+    bcc _reset
+
     lda currChar
     cmp #'m'
     beq _reset
-    lda currChar
-    cmp #'D'
-    beq _reset
-    lda currChar
-    cmp #'B'
-    beq _reset
-    lda currChar
-    cmp #'J'
-    beq _reset
-    lda currChar
-    cmp #'H'
-    beq _H
-    lda currChar
-    cmp #'h'
-    beq _lowerh
-    lda currChar
-    cmp #'C'
-    beq _reset
-    lda currChar
-    cmp #'n'
-    beq _reset
-    lda currChar
-    cmp #'u'
-    beq _reset
-    lda currChar
-    cmp #'s'
-    beq _reset
-   ; cmp #CSI         ; '['
-   ; beq _setCSIState
-    ; cmp #LPAREN      ; '('
-    ; beq _setESCParen
-    ; ; Unknown ESC sequence
-    ; lda #0
-    ; sta term_state
-    ; jsr printTxBuffer
     rts
 _reset
     jsr resetTermState
     jsr parseEscape
     rts
-_H
-    jsr handleH
-    rts
-_lowerh
-    jsr handleLowerh
-    rts
 _setCSIState
     lda #2
     sta term_state
     rts
-handleLowerh
-    jsr resetTermState
-    rts
-handleH
-   ; jsr printTxBuffer
-    jsr resetTermState
-    stz cursor_row
-    stz cursor_col
-    rts
+
 
 resetTermState
     lda #0
@@ -157,32 +140,29 @@ resetTermState
     rts
 
 parseEscape 
-    jsr parse23Up
+   ;sr parse23Up
     jsr parseforColorBlk
     jsr parseReset
-    jsr parseCharLeft
+   ; jsr parseCharLeft
     rts 
 
 
-parse23Up
-    ldy #0 
-_loop
-    lda esc_23Up, y 
-    beq _matched  
-    cmp esc_buffer, y 
-    bne _notMatched 
-    iny 
-    bra _loop
-    rts
-_matched   
-    lda <#$C000 
-    sta SCREEN_PTR
-    lda #>$c000 
-    sta SCREEN_PTR + 1
-    stz mlineNum
-    rts 
-_notMatched
-    rts 
+; parse23Up
+;     ldy #0 
+; _loop
+;     lda esc_23Up, y 
+;     beq _matched  
+;     cmp esc_buffer, y 
+;     bne _notMatched 
+;     iny 
+;     bra _loop
+;     rts
+; _matched   
+;     lda #0
+;     sta cursor_row
+;     rts 
+; _notMatched
+;     rts 
 
 parseforColorBlk
     ldy #0 
@@ -222,21 +202,21 @@ _matched
 _notMatched
     rts 
 
-parseCharLeft 
-    ldy #0 
-_loop
-    lda esc_curLft, y 
-    beq _matched  
-    cmp esc_buffer, y 
-    bne _notMatched 
-    iny 
-    bra _loop
-    rts
-_matched   
-    #sub1macro SCREEN_PTR
-    rts 
-_notMatched
-    rts
+; parseCharLeft 
+;     ldy #0 
+; _loop
+;     lda esc_curLft, y 
+;     beq _matched  
+;     cmp esc_buffer, y 
+;     bne _notMatched 
+;     iny 
+;     bra _loop
+;     rts
+; _matched   
+;     dec cursor_col
+;     rts 
+; _notMatched
+;     rts
 
 clearBuffer
     #pushReg
@@ -308,6 +288,7 @@ use_alt_charset .byte  0       ; flag for line drawing
 
 currChar
     .byte $00
+    
 esc_buffer
     .byte $00, $00, $00, $00, $00, $00, $00, $00
     .byte $00, $00, $00, $00, $00, $00, $00, $00
@@ -318,6 +299,10 @@ buffer_end
 scr_color 
     .byte $50
 
+posX
+    .byte $00
+posy
+    .byte $99
 
 
 esc_for_bright_black
@@ -325,10 +310,7 @@ esc_for_bright_black
 esc_reset    
     .text ESC, '[0m',0
 
-esc_curLft
-    .text ESC, '[D',0
 
-esc_23Up
-    .text ESC, '[23A',0
 .endsection
 .endnamespace
+.include "./escape/main.asm"

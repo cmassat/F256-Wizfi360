@@ -66,16 +66,16 @@ _done_wiFi
 
 
 
-screen
+screenInit
     ;INIT POINTERS
     lda #<$c000
     sta TX_SCREEN_PTR
     lda #>$c000
     sta TX_SCREEN_PTR + 1
 
-    lda screenPos
+    lda screen.screenPos
     sta SCREEN_PTR
-    lda screenPos + 1
+    lda screen.screenPos + 1
     sta SCREEN_PTR + 1
 
     lda #<txBuffer
