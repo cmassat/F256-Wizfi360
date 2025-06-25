@@ -1,39 +1,46 @@
 connect .namespace
 .section code 
+
+initBuffer
+    lda #0
+    sta m_port 
+    sta m_port + 1
+    sta m_port + 2
+    sta m_port + 3
+    sta m_port + 3
+    rts 
 show
+    ;jsr setEchoOff
+    ;jsr app.sendCommand
+   
+    jsr waitASec
     jsr clearScreen
+    ldy #0
+    lda #0
+_loop 
+    sta m_address, y  
+    iny 
+    cpy #80 
+    bne _loop
     jsr clearSendBuffer
     jsr printAddressPrompt
     jsr getAddress
     jsr printPortPrompt
     jsr getPort
     jsr buildCommand
-
     jsr app.sendCommand
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
+    jsr waitASec
     jsr setSendMode
     jsr app.sendCommand
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
+    jsr waitASec
     jsr clearScreen
+    jsr initBuffer
+    lda #1
+    sta mIsConnected
+    stz vt100.cursor_col
+    stz vt100.cursor_row
     jsr app.mainApp
+   
   ; bra show
     rts
 
@@ -409,16 +416,130 @@ _end
     sta (MENU_BUFFER_PTR)
     rts
 
+setEchoOff
+    lda #<txBuffer
+    sta MENU_BUFFER_PTR
+    lda #>txBuffer
+    sta MENU_BUFFER_PTR + 1
+   ldy #0
+_loop
+    lda m_AT_ECHO_OFF, y
+    cmp #0
+    beq _end
+    sta (MENU_BUFFER_PTR)
+    iny
+    #add1macro MENU_BUFFER_PTR
+    bra _loop
+_end
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    rts
+
+
+hangup  
+    jsr waitASec
+    jsr waitASec
+    lda #<txBuffer
+    sta MENU_BUFFER_PTR
+    lda #>txBuffer
+    sta MENU_BUFFER_PTR + 1
+
+    lda #$2b
+    sta (MENU_BUFFER_PTR)
+    #add1macro MENU_BUFFER_PTR
+
+    lda #$2b
+    sta (MENU_BUFFER_PTR)
+    #add1macro MENU_BUFFER_PTR
+
+    lda #$2b
+    sta (MENU_BUFFER_PTR)
+    #add1macro MENU_BUFFER_PTR
+
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    
+    jsr app.sendLogoff
+    jsr waitASec
+    jsr waitASec   
+    jsr closeConnection
+
+    lda #0
+    sta mIsConnected
+    rts
+
+VIA_BASE   = $DC00
+VIA_T1CL   = VIA_BASE + $04
+VIA_T1CH   = VIA_BASE + $05
+VIA_IFR    = VIA_BASE + $0D
+VIA_IER    = VIA_BASE + $0E
+TIMER_LOW  = $E8
+TIMER_HIGH = $FD
+waitASec
+    ldx #101                  ; Number of timer loops
+
+wait_loop
+    lda #TIMER_LOW
+    sta VIA_T1CL              ; Load Timer 1 low first
+    lda #TIMER_HIGH
+    sta VIA_T1CH              ; Writing high starts the countdown
+
+wait_for_t1
+    lda VIA_IFR
+    and #%01000000            ; Bit 6 = Timer 1 interrupt flag
+    beq wait_for_t1
+
+    lda #%01000000            ; Clear T1 interrupt flag
+    sta VIA_IFR
+
+    dex
+    bne wait_loop
+
+    rts 
+
+closeConnection    
+    lda #<txBuffer
+    sta MENU_BUFFER_PTR
+    lda #>txBuffer
+    sta MENU_BUFFER_PTR + 1
+   ldy #$00
+_loop
+    lda m_AT_CLOSE, y
+    cmp #0
+    beq _end
+    sta (MENU_BUFFER_PTR)
+    iny
+    #add1macro MENU_BUFFER_PTR
+    bra _loop
+_end
+    lda #0
+    sta (MENU_BUFFER_PTR)
+    jsr app.sendCommand
+    rts
+
 .endsection 
 
 .section variables 
 .endsection
+
+; m_DISSCONECT 
+;  .text '+++',0
+m_wait 
+    .byte $00
+m_AT_ECHO_OFF
+    .text 'ATE0',0
+
+m_AT_ECHO_ON
+    .text 'ATE1',0
 
 m_AT_SEND
     .text 'AT+CIPSEND',0
 
 m_AT_CONNECT
     .text 'AT+CIPSTART="TCP","',0
+
+m_AT_CLOSE 
+    .text 'AT+CIPCLOSE',0
 
 m_send_buffer
     .fill 255

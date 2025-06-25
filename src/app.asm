@@ -1,15 +1,18 @@
 app .namespace
 .section code
 mainApp
-   lda #1
-   sta mIsInit
+    lda #1
+    sta mIsInit
 
-_handle
+_appLoop
     jsr handleEvents
     lda mKeyPress
     cmp #$88
     beq _menu
-
+    cmp #$87
+    beq _hangUp
+    lda mKeyPress
+    
     jsr getInput
 
     lda txReady
@@ -24,16 +27,24 @@ _txData
     bra _handleRead
     rts
 _rxData
-    jsr ReadResponse
-    bra _handle
+    jsr wiz.ReadResponse
+    bra _appLoop
     rts
 _menu
     stz mKeyPress
     jsr menu.show
-
     rts
+_hangUp
+    stz mKeyPress
+    jsr connect.hangup
+    jsr _appLoop
+    rts
+
 ; Send a single character (in A)
 getInput
+    lda mIsConnected
+    cmp #1
+    beq _sendNow
     lda txReady
     cmp #0
     bne _skipKeyPress
@@ -70,6 +81,7 @@ _backup_buffer
     lda #0
     sta (TX_BUFFER_PTR)
     dec vt100.cursor_col
+    jsr screen.setDebounceTimer
     pla
     bra _skipBuffer
     rts
@@ -81,6 +93,59 @@ _okToSendTx
     jsr _skipBuffer
 _end
     rts
+_sendNow
+    jsr sendNow 
+    rts
+
+sendNow
+    ;jsr handleEvents
+    jsr screen.isOkToPrint
+    bcs _skipKeyPress
+    lda mKeyPress
+    sta tmpKey
+    cmp #0 
+    beq _skipKeyPress
+    lda mKeyPress
+    cmp #$0D
+    beq _sendEnd
+    lda mKeyPress
+    cmp #8
+    beq _skipKeyPress
+    jsr sendChar
+    lda mKeyPress
+    jsr screen.writeToScreen
+    jsr screen.setDebounceTimer
+_skipKeyPress
+    rts 
+
+_sendEnd
+    jsr screen.writeToScreen
+    jsr screen.setDebounceTimer
+    lda #$0D 
+    jsr sendChar
+    lda #$0A
+    jsr sendChar
+    stz mKeyPress
+    rts 
+sendLogoff
+   lda #<txBuffer
+    sta TX_BUFFER_PTR
+    lda #>txBuffer
+    sta TX_BUFFER_PTR + 1
+    phy
+    ldy #0
+_loop
+    lda txBuffer, y
+    cmp #0
+    beq _end
+    jsr SendChar
+    iny
+    bra _loop
+_end
+    ply
+    stz txReady
+    rts 
+
 
 sendCommand
     lda #<txBuffer
@@ -115,32 +180,9 @@ WaitTX
     bne WaitTX
     pla
     sta UART_DATA
-    lda #13
+   ; lda #13
     rts
 
-ReadResponse
-_readLoop
-    jsr read_uart_data
-    bcs _doneRead
-    jsr vt100.parseChar
-_doneRead     ; Null-terminate
-    rts
-
-rollRxBuffer
-    pha
-    ldy #0
-    ldx #1
-_loop
-    lda rxBuffer, x
-    sta rxBuffer,y
-    inx
-    iny
-    cpy #7
-    bne _loop
-    pla
-    dex
-    sta rxBuffer,x
-    rts
 
 clearTxBuffer
      pha
@@ -157,7 +199,7 @@ _loop
     plx
     pla
     rts
-
-
+.endsection
+.section variables
 .endsection
 .endnamespace
