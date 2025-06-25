@@ -11,7 +11,7 @@ handle
     rts 
 _parse
    
-    lda #0
+    lda #1 
     sta vt100.cursor_col
     sta vt100.cursor_row
     clc

@@ -19,8 +19,6 @@ start
     rts
 main
     stz mIsInit
-    stz mIsConnected 
-    jsr wiz.initWiz
     ;jsr clut_default_color
     jsr clut_default_for
     jsr clut_default_bck
@@ -61,7 +59,6 @@ main
 
     jsr init.wiznet
     jsr app.mainApp
-   ; jsr menu.show
     rts
 
 printTxBuffer
@@ -73,42 +70,9 @@ _loop
     lda vt100.esc_buffer, y
     sta $C000 + (28 * 80),y
     iny
-    cpy #32
+    cpy #10
     bne _loop
-    
-    
-    lda vt100.cursor_col
-    lsr 
-    lsr 
-    lsr 
-    lsr 
-    tax 
-    lda m_hex,x
-    sta $C000 + (27 * 80)
-
-
-    lda vt100.cursor_col
-    and #$0F 
-    tax
-    lda m_hex,x
-    sta $C000 + (27 * 80) + 1
-
-    lda tmpKey
-    lsr 
-    lsr 
-    lsr 
-    lsr 
-    tax 
-    lda m_hex,x
-    sta $C000 + (27 * 80) + 3
-
-
-    lda tmpKey
-    and #$0F 
-    tax
-    lda m_hex,x
-    sta $C000 + (27 * 80) + 4
-    stz MMU_IO_CTRL
+     stz MMU_IO_CTRL
 
     #pullReg
     rts
@@ -141,18 +105,13 @@ _loop
 .include "./inc/video.asm"
 .include "./inc/F256.asm"
 .include "./inc/bitmap.asm"
-.include "wiznetResponse.asm"
 .endsection
 .section variables
 ; --- Data ---
 
-tmpKey
-    .byte $00
 
 
 mIsInit 
-    .byte $00
-mIsConnected 
     .byte $00
 AT_SINGLE_CONNECTION
     .text "AT+CIPMUX=0",13,10,0     ; "AT\r\n" + null terminator

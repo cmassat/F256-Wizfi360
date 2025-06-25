@@ -18,7 +18,7 @@ vt100 .namespace
 
 init
     jsr resetTermState
-    lda #0
+    lda #1 
     sta cursor_row
     sta cursor_col
     jsr clearBuffer

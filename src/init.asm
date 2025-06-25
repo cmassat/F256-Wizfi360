@@ -7,7 +7,6 @@ wiznet
     jsr delay
     jsr setTransMode
     jsr delay
-    jsr setEchoOff
     rts
 
 setWiFiMode
@@ -65,23 +64,7 @@ _done_wiFi
     #pullReg
     rts
 
-setEchoOff
-    #pushReg
-    ldy #0
-_loop
-    lda m_AT_ECHO_OFF, y
-    cmp #0
-    beq _done_wiFi
-    sta txBuffer,y
-    iny
-    bra _loop
-_done_wiFi
-    iny
-    lda #0
-    sta txBuffer,y
-    jsr app.sendCommand
-    #pullReg
-    rts
+
 
 screenInit
     ;INIT POINTERS
@@ -119,7 +102,5 @@ AT_SINGLE_MODE
     .text "AT+CIPMUX=0",0     ; "AT\r\n" + null terminator
 AT_TRANS_MODE
     .text "AT+CIPMODE=1",0     ; "AT\r\n" + null terminator
-m_AT_ECHO_OFF
-    .text 'ATE0',0
 .endnamespace
 
