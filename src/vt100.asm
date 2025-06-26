@@ -18,7 +18,7 @@ vt100 .namespace
 
 init
     jsr resetTermState
-    lda #1 
+    lda #0
     sta cursor_row
     sta cursor_col
     jsr clearBuffer
@@ -53,8 +53,8 @@ _handleTelnet
 handleNormalChar
     cmp #ESC
     beq _setESCState
-    ;cmp #$FF
-    ;beq _setTelnet
+    cmp #$85
+    bcs _end
 _print
     jsr screen.writeToScreen
 _end
@@ -65,7 +65,7 @@ _setESCState
     jsr clearBuffer
     lda currChar
     sta (VT100_ESC_PTR)
-    jsr screen.writeToScreen
+   ; jsr screen.writeToScreen
     #add1macro VT100_ESC_PTR
     rts
 _setTelnet
