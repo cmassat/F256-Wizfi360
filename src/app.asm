@@ -5,6 +5,7 @@ mainApp
    sta mIsInit
 
 _handle
+   ; jsr printBuffer
     jsr handleEvents
     lda mKeyPress
     cmp #$88
@@ -24,7 +25,7 @@ _txData
     bra _handleRead
     rts
 _rxData
-    jsr ReadResponse
+    jsr rx.readResponse
     bra _handle
     rts
 _menu
@@ -34,6 +35,9 @@ _menu
     rts
 ; Send a single character (in A)
 getInput
+    lda connect.m_isConnected
+    cmp #1
+    beq _instantSend
     lda txReady
     cmp #0
     bne _skipKeyPress
@@ -81,7 +85,12 @@ _okToSendTx
     jsr _skipBuffer
 _end
     rts
-
+_instantSend
+    lda mKeyPress
+    jsr sendChar
+     jsr screen.writeToScreen
+     jsr screen.setDebounceTimer
+    rts 
 sendCommand
     lda #<txBuffer
     sta TX_BUFFER_PTR
@@ -115,31 +124,61 @@ WaitTX
     bne WaitTX
     pla
     sta UART_DATA
-    lda #13
+    ;lda #13
     rts
 
-ReadResponse
-_readLoop
-    jsr read_uart_data
-    bcs _doneRead
-    jsr vt100.parseChar
-_doneRead     ; Null-terminate
-    rts
+; ReadResponse
+; _readLoop
+;     jsr read_uart_data
+;     bcs _doneRead
+;     sta tmpChar 
+;     lda tmpChar
+;     jsr rollRxBuffer
+;     lda tmpChar
+;     jsr vt100.parseChar
+; _doneRead     ; Null-terminate
+;     rts
 
-rollRxBuffer
-    pha
+; rollRxBuffer
+;     ldy #0
+;     ldx #1
+; _loop
+;     lda rxBuffer, x
+;     sta rxBuffer,y
+;     inx
+;     iny
+;     cpy #7
+;     bne _loop
+;     dey
+;     lda tmpChar 
+;     sta rxBuffer,y
+;     rts
+
+printBuffer
+    #pushReg
     ldy #0
-    ldx #1
+    lda #2
+    sta MMU_IO_CTRL
 _loop
-    lda rxBuffer, x
-    sta rxBuffer,y
-    inx
+    lda vt100.esc_buffer, y
+    sta $C000 + (29 * 80),y
+    lda txBuffer, y
+    sta $C000 + (28 * 80),y
     iny
     cpy #7
     bne _loop
-    pla
-    dex
-    sta rxBuffer,x
+
+;     ldy #0
+; _loop1
+;     lda txBuffer, y
+;     sta $C000 + (28 * 80),y
+;     iny
+;     cpy #79
+;     bne _loop1
+    
+    stz MMU_IO_CTRL
+    #pullReg
+
     rts
 
 clearTxBuffer
@@ -151,7 +190,7 @@ _loop
     lda #0
     sta txBuffer, y
     iny
-    cpy #10
+    cpy #32
     bne _loop
     ply
     plx
@@ -160,4 +199,5 @@ _loop
 
 
 .endsection
+
 .endnamespace

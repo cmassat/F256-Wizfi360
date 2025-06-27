@@ -61,21 +61,7 @@ main
     jsr app.mainApp
     rts
 
-printTxBuffer
-    #pushReg
-    ldy #0
-    lda #2
-    sta MMU_IO_CTRL
-_loop
-    lda vt100.esc_buffer, y
-    sta $C000 + (28 * 80),y
-    iny
-    cpy #10
-    bne _loop
-     stz MMU_IO_CTRL
 
-    #pullReg
-    rts
 
 ; printRxBuffer
 ;     pha
@@ -97,6 +83,7 @@ _loop
 .include "events.asm"
 .include "screen.asm"
 .include "init.asm"
+.include "rx.asm"
 .include "menu.asm"
 .include "connect.asm"
 .include "vt100.asm"

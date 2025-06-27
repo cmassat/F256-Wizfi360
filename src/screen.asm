@@ -86,7 +86,7 @@ carriageReturn
     rts
 
 lineFeed
-    stz vt100.cursor_col
+   ; stz vt100.cursor_col
     lda vt100.cursor_row
     cmp #24 
     bcc _nextLineOk
@@ -131,11 +131,11 @@ _skip
     stz MMU_IO_CTRL
     rts
 _lineFeed 
-    ;jsr carriageReturn
+   ; jsr carriageReturn
     jsr lineFeed
     rts
 _carriageReturn
-    ;jsr linefeed 
+   ;jsr linefeed 
     jsr carriageReturn
     rts 
 _bkSpace
@@ -170,6 +170,8 @@ _bkSpace
 ;     rts
 
 bkSpace
+    jsr screen.isOkToPrint
+    bcs _end
     pha
     lda #2
     sta MMU_IO_CTRL
@@ -191,6 +193,14 @@ bkSpace
     stz MMU_IO_CTRL
 _bkNotYet
     pla
+    ;lda mIsConnected
+    ;beq _end 
+    lda vt100.cursor_col
+    cmp #0
+    beq _end
+    dec vt100.cursor_col
+    jsr screen.DEBOUNCE_VALUE
+_end
     rts
 
 ; Scroll up: move lines 1–23 into lines 0–22
@@ -227,7 +237,7 @@ _copyChar
     #add1macro SCROLL_SRC_PTR
     #add1macro SCROLL_DEST_PTR
     INY
-    CPY #80
+    CPY #85
     BNE _copyChar
     INX
     CPX #24

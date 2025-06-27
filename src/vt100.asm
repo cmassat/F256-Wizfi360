@@ -140,29 +140,9 @@ resetTermState
     rts
 
 parseEscape 
-   ;sr parse23Up
     jsr parseforColorBlk
     jsr parseReset
-   ; jsr parseCharLeft
     rts 
-
-
-; parse23Up
-;     ldy #0 
-; _loop
-;     lda esc_23Up, y 
-;     beq _matched  
-;     cmp esc_buffer, y 
-;     bne _notMatched 
-;     iny 
-;     bra _loop
-;     rts
-; _matched   
-;     lda #0
-;     sta cursor_row
-;     rts 
-; _notMatched
-;     rts 
 
 parseforColorBlk
     ldy #0 

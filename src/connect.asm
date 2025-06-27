@@ -1,6 +1,7 @@
 connect .namespace
 .section code 
 show
+    
     jsr clearScreen
     jsr clearSendBuffer
     jsr printAddressPrompt
@@ -10,31 +11,34 @@ show
     jsr buildCommand
 
     jsr app.sendCommand
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
+    jsr waitConnect
+    
     jsr setSendMode
     jsr app.sendCommand
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
-    jsr delay
+    jsr waitCipSend
+
     jsr clearScreen
+    lda #1
+    sta m_isConnected
+    
     jsr app.mainApp
   ; bra show
+    rts
+
+waitConnect 
+   ; jsr app.printBuffer
+_wait 
+    jsr rx.readResponse
+    jsr rx.isConnect
+    bcs _wait
+    rts
+     
+waitCipSend
+    
+_wait 
+    jsr rx.readResponse
+    jsr rx.isCipSend
+    bcs _wait
     rts
 
 printAddressPrompt
@@ -386,6 +390,8 @@ _loop
     #add1macro MENU_BUFFER_PTR
     bra _loop
 _end
+    lda #0
+    sta (MENU_BUFFER_PTR)
     #add1macro MENU_BUFFER_PTR
     rts
 
@@ -413,7 +419,8 @@ _end
 
 .section variables 
 .endsection
-
+m_isConnected
+    .byte $00
 m_AT_SEND
     .text 'AT+CIPSEND',0
 
