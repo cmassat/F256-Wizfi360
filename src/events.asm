@@ -1,6 +1,6 @@
 .section code
 handleEvents
-
+    
 _wait_for_event 
     ; Peek at the queue to see if anything is pending
     lda		kernel.args.events.pending  ; Negated count
@@ -93,22 +93,22 @@ event	.dstruct	 kernel.event.event_t
 
 .section variables
 mSOFSemaphore
-    .byte $00
+    .word $00
 mKeypress
-    .byte $00
+    .word $00
 mKeyStatus
-    .byte $00
+    .word $00
 mKeyRelease
-    .byte $00
+    .word $00
 m_ticks
-    .byte $00
+    .word $00
 mGameSeconds
-    .byte $00
+    .word $00
 evtMouseDx
-    .byte $00
+    .word $00
 evtMouseDy
-    .byte $00
+    .word $00
 evtMouseBtn
-    .byte $00
+    .word $00
 .endsection
 

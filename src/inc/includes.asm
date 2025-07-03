@@ -1,2 +1,2 @@
 .include 'kernel.asm'
-.include 'keyboard.asm'
+;.include 'keyboard.asm'

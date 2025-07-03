@@ -4,7 +4,7 @@ DEBOUNCE_VALUE = 2
 setDebounceTimer
     lda #DEBOUNCE_VALUE
     sta m_debounce
-    stz mKeyPress
+   ; stz mKeyPress
     rts
 
 isOkToPrint
@@ -33,9 +33,9 @@ nextLine
     pla
     rts
 
-
 getScreenPos
     #pushReg
+
     lda vt100.cursor_row
     asl
     tax 
@@ -56,20 +56,7 @@ getScreenPos
     #pullReg 
     rts 
 
-incrementScreenPos
-    lda vt100.cursor_col
-    cmp #79
-    bcs _skip   
 
-    inc vt100.cursor_col
-    rts 
-_skip   
-    stz vt100.cursor_col
-    rts
-_maxOut
-    lda #79
-    sta vt100.cursor_col
-    rts 
 ; _nextLine
 ;     stz vt100.cursor_col
 ;     lda vt100.cursor_row
@@ -85,16 +72,16 @@ carriageReturn
     stz vt100.cursor_col
     rts
 
-lineFeed
-   ; stz vt100.cursor_col
-    lda vt100.cursor_row
-    cmp #24 
-    bcc _nextLineOk
-    jsr scroll_screen
-    rts 
-_nextLineOk
-    inc vt100.cursor_row
-    rts 
+; lineFeed
+;    ; stz vt100.cursor_col
+;     lda vt100.cursor_row
+;     cmp #24 
+;     bcc _nextLineOk
+;     jsr scroll_screen
+;     rts 
+; _nextLineOk
+;     inc vt100.cursor_row
+;     rts 
 advanceLine
     stz vt100.cursor_col
     lda vt100.cursor_row
@@ -106,41 +93,77 @@ _nextLineOk
     inc vt100.cursor_row
     rts 
 
-writeToScreen
-    cmp #0
-    beq _skip
-    cmp #10
-    beq _lineFeed
-    cmp #13
-    beq _carriageReturn
-    cmp #8
-    beq _bkSpace
-    pha
-    jsr getScreenPos
-    lda #2
+
+
+;x is x coordinate 
+;y is y coordinate 
+;a is char to print
+write2Screen8
+    #A8
+    sta char2Print
+    ;jsr printBuffer
+    sty $DE00 
+    #A16
+    lda #80 ; number of columns 
+    sta $DE02
+    lda $DE10
+    sta SCREEN_PTR
+    clc 
+    adc #$C000
+    ;add X
+    sta SCREEN_PTR
+    txa 
+    clc 
+    adc SCREEN_PTR
+    sta SCREEN_PTR
+
+    #A8 
+    lda #2 
     sta MMU_IO_CTRL
-    pla
+
+    ldx char2Print
+    txa 
     sta (SCREEN_PTR)
-    lda #3
+    lda #0
     sta MMU_IO_CTRL
-    lda vt100.scr_color
-    sta (SCREEN_PTR) 
-    ;#add1macro SCREEN_PTR
-    jsr incrementScreenPos
-_skip
-    stz MMU_IO_CTRL
-    rts
-_lineFeed 
-   ; jsr carriageReturn
-    jsr lineFeed
-    rts
-_carriageReturn
-   ;jsr linefeed 
-    jsr carriageReturn
+
+    #A16
     rts 
-_bkSpace
-    jsr bkSpace
-    rts
+;writeToScreen
+    ;cmp #0
+    ;beq _skip
+    ;cmp #10
+    ;beq _lineFeed
+    ;cmp #13
+    ;beq _carriageReturn
+    ;cmp #8
+    ;beq _bkSpace
+    ;pha
+    ;jsr getScreenPos
+    ;lda #2
+    ;sta MMU_IO_CTRL
+    ;pla
+    ;sta (SCREEN_PTR)
+    ;lda #3
+    ;sta MMU_IO_CTRL
+    ;lda vt100.scr_color
+    ;sta (SCREEN_PTR) 
+    ;#add1macro SCREEN_PTR
+    ;jsr incrementScreenPos
+;_skip
+;    stz MMU_IO_CTRL
+;    rts
+; _lineFeed 
+;    ; jsr carriageReturn
+;     jsr lineFeed
+;     rts
+; _carriageReturn
+;    ;jsr linefeed 
+;     jsr carriageReturn
+;     rts 
+; _bkSpace
+;     jsr bkSpace
+;     rts
 
 ; advanceLine
 ;     pha
@@ -268,14 +291,18 @@ _clearLine
     plx
     pla
     rts
+
+
 .endsection
 
 .section variables
 ;300 ms is 18 frames at 60FPS
 m_debounce
     .byte $0
-
-
+.ALIGN 2
+char2Print
+    .byte $00 
+.ALIGN 2
 screenPos
     .word $c000
     .word $C050

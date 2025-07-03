@@ -1,27 +1,47 @@
 rx .namespace
 .section code
 readResponse
+    #A8
 _readLoop
     jsr read_uart_data
     bcs _doneRead
-    sta tmpChar 
-    lda tmpChar
+    tax 
+    stx tmpChar 
     jsr rollRxBuffer
-    lda tmpChar
+    ldx tmpChar
+    txa 
     jsr vt100.parseChar
+    
 _doneRead     ; Null-terminate
     rts
 
+read_uart_data
+    #A8
+    lda UART_CTRL
+    and #CTRL_RX_EMPTY        ; mask for the RX empty bit
+    cmp #CTRL_RX_EMPTY        ; loop while buffer is empty
+    beq _doneRead
+
+    lda UART_DATA
+    clc 
+    rts
+_doneRead
+    sec 
+    rts
+
 rollRxBuffer
-    lda connect.m_isConnected
+    #A8
+    lda #0
+    ;lda connect.m_isConnected
     cmp #1 
     beq _end
-    lda tmpChar
+    ldx tmpChar
+    txa
     cmp #13 
     beq _end 
     cmp #10
     beq _end 
-    #pushReg
+   ; #pushReg
     ldy #0
     ldx #1
 _loop
@@ -32,10 +52,12 @@ _loop
     cpy #7
     bne _loop
     dey
-    lda tmpChar 
+    ldx tmpChar
+    txa 
     sta rxBuffer,y
-    #pullReg
+   ; #pullReg
 _end
+    
     rts
 
 
@@ -78,10 +100,20 @@ _yes
 
 .endsection  
 .section variables
+
+.align 2
 tmpChar 
-    .byte $00
+    .word $00
 rxBuffer
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
+    .word $00, $00, $00, $00, $00, $00, $00, $00
+    .word $00, $00, $00, $00, $00, $00, $00, $00
+    .word $00, $00, $00, $00, $00, $00, $00, $00
+    .word $00, $00, $00, $00, $00, $00, $00, $00
+    .word $00, $00, $00, $00, $00, $00, $00, $00
+    .word $00, $00, $00, $00, $00, $00, $00, $00
+    .word $00, $00, $00, $00, $00, $00, $00, $00
+    .word $00, $00, $00, $00, $00, $00, $00, $00
+
 
 chkConnect 
     .text 'CONNECT', 0

@@ -29,7 +29,7 @@ handle
     sec 
     rts 
 _parse
-    jsr app.printBuffer
+
 
     clc
     rts 

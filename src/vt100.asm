@@ -2,6 +2,7 @@
 ;STATE_ESC         ; Just saw ESC (0x1B)
 ;STATE_CSI         ; Just saw ESC [
 ;STATE_ESC_PAREN   ; Just saw ESC (
+NORM_STATE = 0
 ESCAPE_STATE = 1
 TELNET_STATE = 2
 ESC     = $1B
@@ -17,7 +18,8 @@ vt100 .namespace
 .section code
 
 init
-    jsr resetTermState
+    ;jsr resetTermState
+    
     lda #0
     sta cursor_row
     sta cursor_col
@@ -25,17 +27,20 @@ init
     rts
 
 parseChar
-    sta currChar
+    #A8
+    tax 
+    stx currChar
     ;pha
     lda term_state
     beq _handleNormalChar
     cmp #ESCAPE_STATE
     beq _handleESC
-    cmp #TELNET_STATE
-    beq _handleTelnet
+  ;  cmp #TELNET_STATE
+  ;  beq _handleTelnet
     rts
 _handleNormalChar
-    lda currChar
+    ldx currChar
+    txa
     jsr handleNormalChar
     rts
 _handleESC
@@ -46,17 +51,28 @@ _handleESC
 ;     lda currChar
 ;     jsr handleCSI
 ;     rts
-_handleTelnet
-    jsr handleTelnet
-    rts 
+
 ;Handle Normal Characters
 handleNormalChar
+    beq _end
     cmp #ESC
     beq _setESCState
+   ; cmp #$ff 
+   ; beq _handleTelnet
     cmp #$85
     bcs _end
+    cmp #10
+    beq _lineFeed
+    cmp #13
+    beq _carriageReturn
+    cmp #8
+    beq _bkSpace
 _print
-    jsr screen.writeToScreen
+    lda currChar
+    ldx cursor_col
+    ldy cursor_row
+    jsr screen.write2Screen8
+    jsr incScreenX
 _end
     rts
 _setESCState
@@ -72,11 +88,25 @@ _setTelnet
     lda #TELNET_STATE
     sta term_state
     rts
-; handleCSI
-;     lda currChar
-;     sta (VT100_ESC_PTR)
-;     rts 
-; Handle ESC Sequence
+_handleTelnet
+  ;  jsr telnet.handleTelnet
+    rts 
+_lineFeed 
+   
+   ; jsr carriageReturn
+    jsr incScreenY
+    rts
+_carriageReturn
+   ;jsr linefeed 
+    ldx #0 
+    stx cursor_col
+    rts 
+_bkSpace
+    jsr decScreenX
+    rts
+
+
+
 handleESC
     jsr isEndOfEsc
     bcc _reset
@@ -85,6 +115,12 @@ handleESC
     sta (VT100_ESC_PTR)
    ; jsr screen.writeToScreen
     #add1macro VT100_ESC_PTR
+    
+    jsr escape__h.handle 
+    bcc _reset
+
+    jsr escape__l.handle 
+    bcc _reset
     
     jsr escape_A.handle
     bcc _reset
@@ -130,14 +166,14 @@ _setCSIState
 
 
 resetTermState
-    lda #0
+    lda #NORM_STATE
     sta term_state
-    ;#setPointer VT100_ESC_PTR, esc_buffer
-    lda #<esc_buffer
-    sta VT100_ESC_PTR
-    lda #>esc_buffer
-    sta VT100_ESC_PTR + 1
-    rts
+;     ;#setPointer VT100_ESC_PTR, esc_buffer
+;     lda #<esc_buffer
+;     sta VT100_ESC_PTR
+;     lda #>esc_buffer
+;     sta VT100_ESC_PTR + 1
+     rts
 
 parseEscape 
     jsr parseforColorBlk
@@ -168,7 +204,7 @@ _notMatched
 parseReset
     ldy #0 
 _loop
-    lda esc_reset, y 
+    lda esc_buffer, y 
     beq _matched  
     cmp esc_buffer, y 
     bne _notMatched 
@@ -182,21 +218,50 @@ _matched
 _notMatched
     rts 
 
-; parseCharLeft 
-;     ldy #0 
-; _loop
-;     lda esc_curLft, y 
-;     beq _matched  
-;     cmp esc_buffer, y 
-;     bne _notMatched 
-;     iny 
-;     bra _loop
-;     rts
-; _matched   
-;     dec cursor_col
-;     rts 
-; _notMatched
-;     rts
+incScreenX
+    #A16
+    lda vt100.cursor_col
+    cmp #79
+    bcs _skip
+
+    inc vt100.cursor_col
+    rts 
+_skip   
+    rts
+
+decScreenX
+    #A16
+    lda vt100.cursor_col
+    cmp #0
+    bcc _skip
+    dec vt100.cursor_col
+    rts 
+_skip   
+    rts
+
+incScreenY
+    #A16
+    lda vt100.cursor_row
+    cmp #24
+    bcs _skip   
+
+    inc vt100.cursor_row
+    rts 
+_skip   
+    rts
+
+decScreenY
+    #A16
+    lda vt100.cursor_row
+    cmp #0
+    beq _skip   
+
+    dec vt100.cursor_row
+    rts 
+_skip   
+    rts
+
+
 
 clearBuffer
     #pushReg
@@ -205,7 +270,8 @@ clearBuffer
 _loop
     sta  esc_buffer, y
     iny
-    cpy #32
+    iny
+    cpy #16
     bcc _loop
     #pullReg
     rts
@@ -232,42 +298,18 @@ _isEnd
 .section variables
 
 
-seperator       .byte  0
-term_state      .byte  0       ; current parser state
-cursor_row      .byte  0       ; current row
-cursor_col      .byte  0       ; current column
-tmp_row         .byte  0       ; for parsing ESC [ r ; c H
-tmp_col         .byte  0
+;seperator       .byte  0
+term_state      .word  0       ; current parser state
+cursor_row      .word  0       ; current row
+cursor_col      .word  0       ; current column
+;tmp_row         .byte  0       ; for parsing ESC [ r ; c H
+;tmp_col         .byte  0
 parse_val       .byte  0       ; for building numbers
 use_alt_charset .byte  0       ; flag for line drawing
 
-  .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
- .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-     .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-     .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-     .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-     .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00
-
+.align 2
 currChar
-    .byte $00
+    .word $00
     
 esc_buffer
     .byte $00, $00, $00, $00, $00, $00, $00, $00
@@ -290,7 +332,8 @@ esc_for_bright_black
 esc_reset    
     .text ESC, '[0m',0
 
-
+esc_showCursor 
+    .byte $00
 .endsection
 .endnamespace
 .include "./escape/main.asm"

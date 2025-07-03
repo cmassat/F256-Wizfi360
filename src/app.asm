@@ -5,8 +5,9 @@ mainApp
    sta mIsInit
 
 _handle
-   ; jsr printBuffer
+    #bit8 
     jsr handleEvents
+    #bit16
     lda mKeyPress
     cmp #$88
     beq _menu
@@ -91,42 +92,6 @@ _instantSend
      jsr screen.writeToScreen
      jsr screen.setDebounceTimer
     rts 
-sendCommand
-    lda #<txBuffer
-    sta TX_BUFFER_PTR
-    lda #>txBuffer
-    sta TX_BUFFER_PTR + 1
-    phy
-    ldy #0
-_loop
-    lda txBuffer, y
-    cmp #0
-    beq _end
-    jsr SendChar
-    iny
-    bra _loop
-
-_end
-    lda #13
-    jsr sendChar
-    lda #10
-    jsr sendChar
-    ply
-    stz txReady
-    rts
-
-SendChar
-    pha
-WaitTX
-    lda UART_CTRL
-    and #CTRL_TX_EMPTY       ; Bit 2 = TX ready
-    cmp #CTRL_TX_EMPTY
-    bne WaitTX
-    pla
-    sta UART_DATA
-    ;lda #13
-    rts
-
 ; ReadResponse
 ; _readLoop
 ;     jsr read_uart_data
@@ -154,48 +119,8 @@ WaitTX
 ;     sta rxBuffer,y
 ;     rts
 
-printBuffer
-    #pushReg
-    ldy #0
-    lda #2
-    sta MMU_IO_CTRL
-_loop
-    lda vt100.esc_buffer, y
-    sta $C000 + (29 * 80),y
-    lda txBuffer, y
-    sta $C000 + (28 * 80),y
-    iny
-    cpy #7
-    bne _loop
 
-;     ldy #0
-; _loop1
-;     lda txBuffer, y
-;     sta $C000 + (28 * 80),y
-;     iny
-;     cpy #79
-;     bne _loop1
-    
-    stz MMU_IO_CTRL
-    #pullReg
 
-    rts
-
-clearTxBuffer
-     pha
-    phx
-    phy
-     ldy #0
-_loop
-    lda #0
-    sta txBuffer, y
-    iny
-    cpy #32
-    bne _loop
-    ply
-    plx
-    pla
-    rts
 
 
 .endsection

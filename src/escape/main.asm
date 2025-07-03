@@ -1,3 +1,5 @@
+.include "esc__h.asm"
+.include "esc__l.asm"
 .include "esc_A.asm"
 .include "esc_B.asm"
 .include "esc_C.asm"

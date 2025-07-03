@@ -26,7 +26,7 @@ show
     rts
 
 waitConnect 
-   ; jsr app.printBuffer
+
 _wait 
     jsr rx.readResponse
     jsr rx.isConnect
@@ -180,22 +180,7 @@ _backup_buffer
     lda #0
     sta (MENU_BUFFER_PTR)
     jsr screen.setDebounceTimer
-    ; lda #$20
-    ; sta (SCROLL_DEST_PTR)
-    ; lda #0
-    ; sta (MENU_BUFFER_PTR)
-    ; #sub1macro SCROLL_DEST_PTR
-    ; #sub1macro MENU_BUFFER_PTR
-
-    ; lda #2
-    ; sta MMU_IO_CTRL
-    ; lda #$20
-    ; sta (SCROLL_DEST_PTR)
-    ; stz MMU_IO_CTRL
-
-    ; lda #0
-    ; sta (MENU_BUFFER_PTR)
-    ; jsr screen.setDebounceTimer
+ 
      bra _wait
     rts
 _end
