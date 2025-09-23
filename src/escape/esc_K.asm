@@ -13,12 +13,12 @@ _parse
     lda vt100.esc_buffer + 2 
     cmp #'K'
     beq _erase2End
-    cmp #'1'
-    beq _erase2Start
-    cmp #'2'
-    beq _eraseLine
+    ;cmp #'1'
+    ;beq _erase2Start
+    ;cmp #'2'
+    ;beq _eraseLine
     
-    clc
+    sec
     rts
 _erase2End
     jsr erase2End

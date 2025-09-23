@@ -4,17 +4,16 @@ ESC_CHAR='D'
 MAX_LENGTH = 80
 .section code 
 handle
-    lda vt100.currChar
+    lda vt100.esc_buffer + 2
     cmp #ESC_CHAR
     beq _parse
     sec 
     rts 
 _parse
-    lda #2            ; skip ESC and '['
-    sta index
-    lda #0
-    sta value
-
+    jsr vt100.decScreenX
+    clc
+    rts 
+    
 parse
     ldy index
 

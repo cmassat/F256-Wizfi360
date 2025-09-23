@@ -12,6 +12,8 @@ resetKeys
     stz mKeyboardDelay
     stz mKeyboardResetAnyKey
     stz mAnyKey
+    stz mKey0
+    stz mKey1
     stz mKeyW
     stz mKeyA
     stz mKeyS
@@ -43,6 +45,8 @@ keyboardAnykey
     rts
     
 keyboardPressed
+    jsr set_1_pressed
+    jsr set_2_pressed
     jsr set_w_pressed
     jsr set_a_pressed
     jsr set_s_pressed
@@ -55,6 +59,8 @@ keyboardPressed
     jsr set_down_pressed
     rts
 keyboardReleased
+    jsr set_1_released
+    jsr set_2_released
     jsr set_w_released
     jsr set_a_released
     jsr set_s_released
@@ -83,6 +89,14 @@ _yes
     stz mKeyPress
 .endmacro
 
+
+set_1_pressed
+    #keyPressMacro mKey1, '1'
+    rts
+
+set_2_pressed
+    #keyPressMacro mKey2, '2'
+    rts
 
 set_a_pressed
     #keyPressMacro mKeyA, 'a'
@@ -252,6 +266,25 @@ _yes
     stz mKeyF1
     rts
 
+set_1_released
+    lda mKeyRelease
+    cmp #'1'
+    beq _yes
+    rts
+_yes
+    stz mKey1
+    rts
+
+set_2_released
+    lda mKeyRelease
+    cmp #'2'
+    beq _yes
+    rts
+_yes
+    stz mKey2
+    rts
+
+
 set_w_released
     lda mKeyRelease
     cmp #'w'
@@ -409,6 +442,10 @@ mKeyboardResetAnyKey
     .byte $00
 mAnyKey
     .byte $00
+mKey0
+    .byte $00
+mKey1
+    .byte $00
 mKeyW
     .byte $00
 mKeyA
@@ -428,5 +465,8 @@ mKeyLeft
 mKeyRight
     .byte $00
 mKeyDown
+    .byte $00
+
+mKeyRelease
     .byte $00
 .endsection

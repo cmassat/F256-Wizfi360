@@ -1,24 +1,19 @@
+events .namespace
 .section code
-handleEvents
-    
-_wait_for_event 
-    ; Peek at the queue to see if anything is pending
-    lda		kernel.args.events.pending  ; Negated count
-    bpl		_done
+
+handle
+    lda	kernel.args.events.pending  ; Negated count
+    bpl	_done
 
     ; Get the next event.
-    jsr		kernel.NextEvent
-    bcs		_done
-
-    ; Handle the event
-    jsr		_dispatch
+    jsr	kernel.NextEvent
+    bcs	_done
+    jsr _dispatch
+    rts 
 _done
-    rts
-
- _dispatch
-
+    rts 
+_dispatch
     lda	event.type
-
     cmp #kernel.event.key.PRESSED
     beq keyPressed
 
@@ -27,31 +22,51 @@ _done
 
     cmp #kernel.event.timer.EXPIRED
     beq handleTimerEvent
+    rts 
+; handleLoop
+;     _wait_for_event 
+;     ; Peek at the queue to see if anything is pending
+;     lda		kernel.args.events.pending  ; Negated count
+;     bpl		_done
 
-    rts
+;     ; Get the next event.
+;     jsr		kernel.NextEvent
+;     bcs		_done
+
+;     ; Handle the event
+;     jsr		_dispatch
+; _done
+;     rts
+
+;  _dispatch
+
+;     lda	event.type
+
+;     cmp #kernel.event.key.PRESSED
+;     beq keyPressed
+
+;     cmp #kernel.event.key.RELEASED
+;     beq keyReleased
+
+;     cmp #kernel.event.timer.EXPIRED
+;     beq handleTimerEvent
+
+;     rts
 
 handleTimerEvent
     jsr setFrameTimer
-    ;#add1macro m_frames
 
-    lda screen.m_debounce
-    cmp #0
-    beq _skip_debounce
-    dec screen.m_debounce
-_skip_debounce
-    lda mKeyPress
-    cmp #0
+    lda mDebounce
     beq _skip
-    lda mKeyPress
-    cmp mKeyRelease
-    bne _skip
-   ; jsr getInput
-_skip
-    rts
 
+    dec mDebounce
+    rts
+_skip 
+    rts 
 keyPressed
     lda event.key.ascii
     sta mKeyPress
+    sta mKeypressbak
 _skip
     rts
 
@@ -78,24 +93,30 @@ setFrameTimer
     jsr kernel.Clock.SetTimer
     rts
     
-initEvents
+init
     lda #<event
     sta kernel.args.events+0
     lda #>event
     sta kernel.args.events+1
 
+    jsr setFrameTimer
+
     stz mKeyPress
     stz mKeyRelease
     rts
 .endsection
-
+.endnamespace
 event	.dstruct	 kernel.event.event_t
 
 .section variables
+mDebounce 
+    .byte $00
 mSOFSemaphore
     .word $00
 mKeypress
-    .word $00
+    .byte $00
+mKeypressbak
+    .byte $00
 mKeyStatus
     .word $00
 mKeyRelease

@@ -1,26 +1,264 @@
 ;hide show cursor
 escape__m .namespace
-ESC_CHAR='m'
+ESC_CHAR=$6d ;m
 MAX_LENGTH = 80
+;^[m
 .section code 
 handle
-    lda vt100.currChar
+    ldy #2
+    lda vt100.esc_buffer, y
     cmp #ESC_CHAR
-    beq _parse
+    beq _parse_none
+
+    iny
+
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse1
+
+    iny
+
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse2
+
+    iny
+
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse3
+
+    iny
+
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse4
+
+    iny
+
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse5
+
+    iny
+
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse6
+
+    iny
+
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse7
+
+    iny
+
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse8
+
+    iny
+
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse9
     sec 
     rts 
-_parse
-    jsr first 
-    bcs _end 
-   ; jsr second 
-   ; bcs _end 
-   ; jsr third
-_end
-    lda #$50
-    sta vt100.scr_color
+_parse_none
+    jsr parse_none
     clc 
+    rts 
+_parse1
+    jsr parse1
+    clc
+    rts 
+_parse2
+    jsr parse2
+    clc
+    rts 
+_parse3
+    jsr parse3
+    clc
+    rts 
+_parse4
+    jsr parse4
+    clc
     rts
+_parse5
+    jsr parse5
+    clc
+    rts 
+_parse6
+    jsr parse6
+    clc
+    rts 
+_parse7
+    jsr parse7
+    clc
+    rts 
+_parse8
+    jsr parse8
+    clc
+    rts 
+_parse9
+    jsr parse9
+    clc
+    rts 
 
+
+
+parse_none
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc 
+    rts 
+parse1
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts 
+parse2
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts 
+parse3
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts 
+parse4
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts
+parse5
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts 
+parse6
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts 
+parse7
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts 
+parse8
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts 
+parse9
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts 
+
+
+_parse90
+    lda vt100.esc_buffer + 2
+    cmp #'9'
+    bne _parse34
+    lda vt100.esc_buffer + 3
+    cmp #'0'
+    bne _parse34
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    jsr vt100.decScreenX
+    clc
+    rts 
+_parse34
+    bra _skip
+    lda vt100.esc_buffer + 2
+    cmp #'3'
+    bne _parse94
+    lda vt100.esc_buffer + 3
+    cmp #'4'
+    bne _parse94
+    dec vt100.cursor_col
+    dec vt100.cursor_col
+    dec vt100.cursor_col
+    dec vt100.cursor_col
+    clc
+    rts 
+_parse94
+    lda vt100.esc_buffer + 2
+    cmp #'9'
+    bne _skip
+    lda vt100.esc_buffer + 3
+    cmp #'4'
+    bne _skip
+    dec vt100.cursor_col
+    dec vt100.cursor_col
+    dec vt100.cursor_col
+    dec vt100.cursor_col
+    clc
+    rts 
+_skip
+    sec
+    rts 
 first
     lda vt100.esc_buffer + 2
     cmp #';'

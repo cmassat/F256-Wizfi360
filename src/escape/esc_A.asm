@@ -1,56 +1,99 @@
 ;A Is Cursor UP
 escape_A .namespace
-ESC_CHAR='A'
+ESC_CHAR=$41
 MAX_LENGTH = 24
 .section code 
 handle
-    lda vt100.currChar
+    ldy #2
+    lda vt100.esc_buffer, y
     cmp #ESC_CHAR
     beq _parse
+    iny
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse_one
+    iny
+    lda vt100.esc_buffer, y
+    cmp #ESC_CHAR
+    beq _parse_tens
     sec 
     rts 
 _parse
-    lda #2            ; skip ESC and '['
-    sta index
-    lda #0
-    sta value
-
-parse
-    ldy index
-
-    lda vt100.esc_buffer, y
-    cmp #ESC_CHAR
-    beq _done_parsing
-    cmp #'9'+1
-    bcs _done_parsing
-     ; Convert ASCII digit to binary
-    jsr build
-    inc index
-    jsr parse
-    rts
-_done_parsing 
-    lda index 
-    cmp #0 
-    bne _move
-    lda #1 
-    sta value 
-_move
-    lda vt100.cursor_row
-    sec 
-    sbc value 
-    sta vt100.cursor_row  
-    sta col
-
-    lda vt100.cursor_row 
-    cmp #MAX_LENGTH - 1
-    bcs _reset
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenY
+    ; jsr vt100.print_wild
     clc
-    rts
-_reset 
-    lda #1 
-    sta vt100.cursor_row
-    stz col
+    rts 
+_parse_one
+
+    jsr parse_one
+    jsr move_cursor
+    clc
+    rts 
+_parse_tens
+    jsr parse_tens
+    jsr move_cursor
+
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    clc
+    rts 
+parse_one 
+    stz digit
+    lda vt100.esc_buffer + 2
+    jsr ones_to_int
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    ; jsr vt100.decScreenX
+    ; jsr vt100.print_wild
+    rts 
+
+move_cursor
+    lda digit 
+    jsr vt100.subScreenY
+    
+    rts 
+parse_tens
+    stz digit
+    lda vt100.esc_buffer + 3
+    sec 
+    sbc #'0' 
+    sta digit 
+    lda vt100.esc_buffer + 2
+    sec 
+    sbc #'0'
+    tax
+    lda tens,x
     clc 
+    adc digit
+    sta digit 
+    rts 
+
+ones_to_int
+    sta digit 
+    lda digit 
+    sec 
+    sbc #'0'
+    sta digit
     rts 
 
 build 

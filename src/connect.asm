@@ -1,9 +1,8 @@
 connect .namespace
-.section code 
+.section code
 show
-    
-    jsr clearScreen
-    jsr clearSendBuffer
+
+    ;jsr clearSendBuffer
     jsr printAddressPrompt
     jsr getAddress
     jsr printPortPrompt
@@ -12,30 +11,29 @@ show
 
     jsr app.sendCommand
     jsr waitConnect
-    
+
     jsr setSendMode
     jsr app.sendCommand
     jsr waitCipSend
 
-    jsr clearScreen
     lda #1
     sta m_isConnected
-    
+
     jsr app.mainApp
   ; bra show
     rts
 
-waitConnect 
+waitConnect
 
-_wait 
+_wait
     jsr rx.readResponse
     jsr rx.isConnect
     bcs _wait
     rts
-     
+
 waitCipSend
-    
-_wait 
+
+_wait
     jsr rx.readResponse
     jsr rx.isCipSend
     bcs _wait
@@ -180,7 +178,7 @@ _backup_buffer
     lda #0
     sta (MENU_BUFFER_PTR)
     jsr screen.setDebounceTimer
- 
+
      bra _wait
     rts
 _end
@@ -400,9 +398,9 @@ _end
     sta (MENU_BUFFER_PTR)
     rts
 
-.endsection 
+.endsection
 
-.section variables 
+.section variables
 .endsection
 m_isConnected
     .byte $00

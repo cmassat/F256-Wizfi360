@@ -18,117 +18,280 @@ start
     jmp main
     rts
 main
-    sei             ; Disable interrupts
-    cld             ; Clear decimal mode
-    ldx #$FF
-    txs             ; Init 8-bit stack pointer (emulation mode only)
-
-    clc             ; Ensure carry = 0 before xce
-    xce             ; Exchange C ↔ E → enter native mode (E = 0)
-
-    rep #$30        ; Clear M and X → A, X, Y = 16-bit
-    .al             ; Tell assembler A is 16-bit
-    .xl             ; Tell assembler X/Y are 16-bit
-
-    lda #$0000
-    tcd             ; Set Direct Page = $0000
-
-    lda #$00
-    pha
-    plb             ; Set Data Bank (DB) = 0
-
-    ldx #$01FF
-    txs             ; Reinitialize 16-bit stack (in native mode)
-
-    #AX16
+    jsr screen.set80x30
     jsr clut_default_for
     jsr clut_default_bck
     jsr defaultScreenColor
-    ;jsr clearScreen
-    #A8
-    lda $D001
-    ora #%00000100
-    sta $D001
-    #A16
+
     jsr tx.init
-    jsr clearScreen
-   
-
-    
     jsr wizfi.init
-   ; jsr saveRegisters
-    
+    jsr events.init
+    jsr state.init
+    jsr vt100.init
+
+_loop
+    jsr events.handle
+    jsr menu.handle
+    jsr terminal.handle
+    jsr rx.readResponse
+    bra _loop
     rts
+debug 
+    #pushReg
+    lda #2
+    sta MMU_IO_CTRL
+
+    lda vt100.esc_buffer
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C000 + 80 * 28
+
+    lda vt100.esc_buffer
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C001 +  80 * 28
+
+    lda  vt100.esc_buffer + 1
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C003 + 80 * 28
+
+    lda vt100.esc_buffer + 1
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C004 +  80 * 28
+
+
+    lda  vt100.esc_buffer + 2
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C006 + 80 * 28
+
+    lda vt100.esc_buffer + 2
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C007 +  80 * 28
+    
+    lda  vt100.esc_buffer + 3
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C009 + 80 * 28
+
+    lda vt100.esc_buffer + 3
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C00a +  80 * 28  
 
 
 
-;    ; jsr vt100.init
+    lda  vt100.esc_buffer + 4
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C00c + 80 * 28
 
-;     ;INIT POINTERS
-;     lda #<$c000
-;     sta TX_SCREEN_PTR
-;     lda #>$c000
-;     sta TX_SCREEN_PTR + 1
+    lda vt100.esc_buffer + 4
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C00d +  80 * 28  
+
+    lda  vt100.esc_buffer + 5
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C00f + 80 * 28
+
+    lda vt100.esc_buffer + 5
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C010 +  80 * 28  
+
+    lda  vt100.esc_buffer + 6
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C012 + 80 * 28
+
+    lda vt100.esc_buffer + 6
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C013 +  80 * 28  
+
+    lda  vt100.esc_buffer + 7
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C015 + 80 * 28
+
+    lda vt100.esc_buffer + 7
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C016 +  80 * 28  
 
 
-;     lda #<txBuffer
-;     sta TX_BUFFER_PTR
-;     lda #>txBuffer
-;     sta TX_BUFFER_PTR + 1
+    lda  vt100.esc_buffer + 8
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C018 + 80 * 28
 
-;     lda #<txBufferSent
-;     sta TX_SENT_PTR
-;     lda #>txBufferSent
-;     sta TX_SENT_PTR + 1
+    lda vt100.esc_buffer + 8
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C019 +  80 * 28  
 
-;     stz txReady
-;     lda #1
-;     sta mlineNum
+    lda  vt100.esc_buffer + 9
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C01b + 80 * 28
+
+    lda vt100.esc_buffer + 9
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C01c +  80 * 28  
 
 
-   ; jsr initEvents
-   ; jsr setFrameTimer
-   ; jsr telnet.telnetInit
-   ; jsr init.wiznet
-   ; jsr app.mainApp
-  ;  rts
+    lda  vt100.esc_buffer + 10
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C01e + 80 * 28
 
+    lda vt100.esc_buffer + 10
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C01f +  80 * 28  
 
+    lda  vt100.esc_buffer + 11
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C021 + 80 * 28
 
-; printRxBuffer
-;     pha
-;     phx
-;     phy
-;     ldy #0
-;     lda #2
-;     sta MMU_IO_CTRL
-; _loop
-;     lda rxBuffer, y
-;     sta $C000 + (27 * 80),y
-;     iny
-;     cpy #8
-;     bne _loop
-; rts
+    lda vt100.esc_buffer + 11
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C022 +  80 * 28  
+
+    lda  vt100.term_state
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C000 
+
+    lda vt100.term_state
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C001
+
+    ;col  
+    lda  vt100.cursor_col
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C003
+
+    lda vt100.cursor_col
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C004
+
+    ;row 
+    lda  escape_A.digit
+    lsr 
+    lsr 
+    lsr 
+    lsr
+    tay 
+    lda m_hex, y
+    sta $C000 +  80 * 27
+
+    lda escape_A.digit
+    and #$0f
+    tay 
+    lda m_hex, y
+    sta $C001 +  80 * 27
+
+    stz MMU_IO_CTRL
+    #pullReg
+    rts 
+.include "./inc/F256.asm"
 .include "./inc/kernel.asm"
 
-.include "util.asm"
-; .include "events.asm"
-; .include "screen.asm"
-; .include "init.asm"
-; .include "rx.asm"
-; .include "menu.asm"
-; .include "connect.asm"
-; .include "vt100.asm"
-; .include "app.asm"
-; .include "telnet.asm"
-; .include "./inc/video.asm"
-.include "./inc/F256.asm"
-.include "tx.asm"
+.include "state.asm"
+.include "events.asm"
+.include "terminal.asm"
+.include "keyboard.asm"
+.include "menu.asm"
 .include "rx.asm"
-.include "vt100.asm"
 .include "screen.asm"
+.include "tx.asm"
+.include "util.asm"
+.include "vt100.asm"
 .include "wizfi.asm"
-;.include "keyboard.asm"
+
+
 .endsection
 .section variables
 ; --- Data ---
@@ -137,15 +300,10 @@ main
 
 mIsInit 
     .word $00
-; AT_SINGLE_CONNECTION
-;     .text "AT+CIPMUX=0",13,10,0     ; "AT\r\n" + null terminator
-; AT_TRANSPARENT_MODE
-;     .text "AT+CIPMODE=1",13,10,0     ; "AT\r\n" + null terminator
-; AT_START_DATA_XFER
-;     .text "AT+CIPSEND",13,10,0     ; "AT\r\n" + null terminator
 
-; m_frames
-;  .byte $00
+mTimer
+    .byte $00
+
 
 m_seconds
     .word $00

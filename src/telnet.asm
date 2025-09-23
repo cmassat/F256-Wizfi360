@@ -1,263 +1,86 @@
-telnet .namespace
-DO   = $FD
-DONT = $FE
+; --- Telnet constants ---
+IAC  = $FF
+SE   = $F0   ; end subneg
+SB   = $FA   ; start subneg
 WILL = $FB
 WONT = $FC
+DO   = $FD
+DONT = $FE
 
-STATE_COMMAND = 0 
-STATE_OPTION = 1
-.section code 
+; External:
+;   NextByte: returns C=0, A=byte  OR  C=1 if no input
+;   PutByte : outputs A (optional, shown in usage)
 
-telnetInit 
-    stz telnetcmd
+; FilterNext:
+;   Strips Telnet IAC sequences, returns only data bytes.
+;   On return: C=0 -> A = data byte;  C=1 -> no data available.
+FilterNext:
+FN_Loop:
+    JSR NextByte
+    BCS FN_NoInput             ; nothing available
 
-    ;lda #telnetBufferRx
-    ;clc 
-    ;adc #1 
-    ;sta TELNET_PTR
+    CMP #IAC
+    BNE FN_EmitData            ; normal data byte -> return it
 
-    ;sta TELNET_PTR
-    ;lda >#telnetBufferRx
-    ;sta TELNET_PTR + 1
-    rts 
+    ; Saw IAC, read command byte
+    JSR NextByte
+    BCS FN_NoInput             ; incomplete
 
+    CMP #IAC
+    BEQ FN_EmitFF              ; IAC IAC => literal $FF
 
-incPtr 
-    lda TELNET_PTR
-    clc 
-    adc #1 
-    sta TELNET_PTR
+    ; Negotiation 3-byte: WILL/WONT/DO/DONT <opt>
+    CMP #WILL
+    BEQ FN_SkipOpt
+    CMP #WONT
+    BEQ FN_SkipOpt
+    CMP #DO
+    BEQ FN_SkipOpt
+    CMP #DONT
+    BEQ FN_SkipOpt
 
-    lda TELNET_PTR + 1 
-    adc #0 
-    sta TELNET_PTR + 1 
-    rts 
+    ; Subnegotiation: IAC SB <opt> ... IAC SE
+    CMP #SB
+    BEQ FN_SkipSB
 
-handleTelnet
-    lda telnetcmd 
-    cmp #1 
-    beq _end 
-    ldy #0
-    lda vt100.currChar
-    sta telnetBufferRx, y
-_read_command 
-    jsr read_uart_data
-    lda vt100.currChar
-    cmp #$FF 
-    beq _read_command
+    ; Single-byte IAC command -> ignore and continue
+    JMP FN_Loop
 
+FN_SkipOpt:
+    JSR NextByte               ; eat <opt>
+    BCS FN_NoInput
+    JMP FN_Loop
 
-    lda vt100.currChar
-    sta telnetCommand      
-    
-    ldy #1
-    lda telnetCommand
-    sta telnetBufferRx, y
- 
+FN_SkipSB:
+    ; At: IAC SB <opt> ...
+    JSR NextByte               ; eat <opt>
+    BCS FN_NoInput
 
-_read_option 
-    jsr read_uart_data
-    lda vt100.currChar 
-    cmp telnetCommand
-    beq _read_option
-    
-    lda vt100.currChar
-    sta telnetOption
-   
-    ;sta (TELNET_PTR)
-    ;#add1macro TELNET_PTR
+FN_SB_Loop:
+    JSR NextByte
+    BCS FN_NoInput
 
-    ldy #2
-    lda telnetOption
-    sta telnetBufferRx, y
+    CMP #IAC
+    BNE FN_SB_Loop             ; keep skipping inside SB
 
-    ;ldy #1
-    ;lda telnetBufferRx, y
-    ;sta telnetCommand
+    ; Saw IAC inside SB
+    JSR NextByte
+    BCS FN_NoInput
 
-    ;iny 
-    ;lda telnetBufferRx, y
-    ;sta telnetOption
+    CMP #IAC
+    BEQ FN_SB_Loop             ; IAC IAC -> escaped $FF, continue skipping
 
-    
-    lda #1 
-    sta telnetcmd
-;    lda telnetState 
- ;   cmp #STATE_OPTION
- ;   beq _handleOption
- ;   bra handleCommand 
-   
-_end 
-   
-    rts 
-_handleOption
-    jsr handleOption
-    rts 
+    CMP #SE
+    BEQ FN_Loop                ; IAC SE ends SB -> resume normal
 
-handleCommand
-    lda telnetCommand
-    cmp #DO
-    beq _do
-    cmp #WILL
-    beq _will 
-_end  
-   
-    rts
-_do
-    ; sta telnetCommand
-    ; lda #STATE_OPTION
-    ; sta telnetState
-    ; jsr sendWillCommand
-    ;  stz telnetState
-    ; jsr vt100.resetTermState
-    rts 
-_will 
-    ; sta telnetCommand
-    ; lda #STATE_OPTION
-    ; sta telnetState
-    ; jsr sendDoCommand
-    ;  stz telnetState
-    ; jsr vt100.resetTermState
-    rts 
+    JMP FN_SB_Loop             ; other IAC <x> inside SB -> ignore
 
+FN_EmitFF:
+    LDA #$FF
+FN_EmitData:
+    CLC                        ; data byte ready
+    RTS
 
-
-handleOption
-    jsr read_uart_data
-    bcs _end 
-    lda telnetCommand
-    cmp #WILL
-    beq _will 
-    cmp #DO
-    beq _do
-_end
-    rts 
-_will
-    jsr sendDoCommand
-    rts 
-_do 
-    jsr sendWillCommand
-    rts 
-
-sendWillCommand
-    phy
-    ldy #0
-_loop
-    lda willResponse, y 
-    cmp #0
-    beq _end
-    jsr app.SendChar
-    iny
-    bra _loop
-
-_end
-    ply
-    stz txReady
-    rts
-
-sendDoCommand
-    phy
-    ldy #0
-_loop
-    lda doResponse, y
-    cmp #0
-    beq _end
-    jsr app.SendChar
-    iny
-    bra _loop
-
-_end
-
-    ply
-    stz txReady
-    rts
-
-; printBasdfs
-;     #pushReg
-
-;     lda #2 
-;     sta MMU_IO_CTRL
-;     ldy #0 
-; _loop 
-;     lda telnetBufferRx, y 
-;     lsr 
-;     lsr 
-;     lsr 
-;     lsr 
-;     tax 
-;     lda m_hex, x
-;     sta $C000 + (27 * 80),y 
-    
-;     lda telnetBufferRx, y 
-;     and #$0F 
-;     tax 
-;     lda m_hex, x
-;     iny 
-;     sta $C000 + (27 * 80),y 
-;     iny
-;     cpy #40 
-;     bne _loop
-
-   
-;     lda telnetCommand
-;     lsr 
-;     lsr 
-;     lsr 
-;     lsr 
-;     tax 
-;     lda m_hex, x
-;     sta $C000 + (27 * 80) + 45
-    
-;     lda telnetCommand
-;     and #$0F 
-;     tax 
-;     lda m_hex, x
-
-;     sta $C000 + (27 * 80) + 46
-
-;     lda telnetOption
-;     lsr 
-;     lsr 
-;     lsr 
-;     lsr 
-;     tax 
-;     lda m_hex, x
-;     sta $C000 + (27 * 80) + 48
-    
-;     lda telnetOption
-;     and #$0F 
-;     tax 
-;     lda m_hex, x
-
-;     sta $C000 + (27 * 80) + 49
-;     stz MMU_IO_CTRL
-;     #pullReg
-;     rts 
-
-.endsection
-.section variables
-telnetcmd 
-    .byte $00
-willResponse 
-    .byte $FF, DO, $03, 0
-doResponse
-    .byte $FF, WILL, $03, 0
-
-telnetCommand
-    .byte $00, $00
-telnetOption
-    .byte $00, $00
-
-
-telnetBufferRx 
-    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-telnetBufferRx_end
-.endsection
-.endnamespace
+FN_NoInput:
+    SEC                        ; no byte available
+    RTS

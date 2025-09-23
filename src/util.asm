@@ -27,38 +27,6 @@ pushReg .macro
     phy
 .endmacro
 
-A8 .macro
-    SEP #$20     ; Set accumulator to 8-bit
-    .as          ; Tell assembler we're in 8-bit A mode
-.endmacro
-
-A16 .macro
-    REP #$20     ; Set accumulator to 16-bit
-    .al          ; Tell assembler we're in 16-bit A mode
-.endmacro
-
-X8 .macro
-    SEP #$10     ; Set index to 8-bit
-    .xs          ; Tell assembler we're in 8-bit index mode
-.endmacro
-
-X16 .macro
-    REP #$10     ; Set index to 16-bit
-    .xl          ; Tell assembler we're in 16-bit index mode
-.endmacro
-
-AX8 .macro
-    SEP #$30     ; Set both A and X to 8-bit
-    .as
-    .xs
-.endmacro
-
-AX16 .macro AX16
-    REP #$30     ; Set both A and X to 16-bit
-    .al
-    .xl
-.endmacro
-
 
 setPointer .macro pointer, address
     lda <#\address
@@ -73,73 +41,90 @@ pullReg .macro
     pla
 .endmacro
 
-
-; input 
-;   no inputs, A register is destructive
-; output 
-;   A register will have the UART_DATA
-
-
-delay
-    #pushReg
-    ldx #0
-_outer
-    ldy #0
-_loop
-    iny
-    cpy #0
-    bne _loop
-    inx
-    cpx #0
-    bne _outer
-    #pullReg
-    rts
-
 clearScreen
-    #a16
-    lda #$C000
+    lda <#$C000
     sta SCROLL_DEST_PTR
-    #AX8
+    lda >#$C000
+    sta SCROLL_DEST_PTR + 1
     lda #2
     sta MMU_IO_CTRL
-    #AX16
 
+    ldx #0 
+_loopRow 
     ldy #0
 _loopChar
-    lda #$2020
-    sta $c000,y
-    iny
-    iny
-    cpy #4800
-    
+    lda #$20
+    sta (SCROLL_DEST_PTR)
+    #add1macro SCROLL_DEST_PTR
+    iny 
+    cpy #80 
     bcc _loopChar
-
-    #A8 
+    inx 
+    cpx #30 
+    bcc _loopRow
+         
     stz MMU_IO_CTRL
-    #A16
+
     rts
 
+
+
+isTimerComplete
+    lda mTimer
+    cmp #$05
+    bcc _nope   
+    clc
+    stz mTimer
+    rts 
+_nope 
+    sec 
+    rts 
+
+setDebounce
+    stz mTimer
+    rts 
+
+isKeyscanReady
+    lda mTimer 
+    cmp #2   ;20 milisonds 
+    bcs _yes
+    sec  
+    rts 
+_yes 
+    stz mTimer
+    clc 
+    rts 
+
 defaultScreenColor
-    #A8
+    #pushReg
+    lda <#$C000
+    sta SCROLL_DEST_PTR
+    lda >#$C000
+    sta SCROLL_DEST_PTR + 1
     lda #3
     sta MMU_IO_CTRL
-    #A16
+
+    ldx #0 
+_loopRow 
     ldy #0
 _loopChar
-    lda #$5050
-    sta $c000,y
-    iny
-    iny
-    cpy #4800
-    bne _loopChar
-    #A8
+    lda #$50
+    sta (SCROLL_DEST_PTR)
+    #add1macro SCROLL_DEST_PTR
+    iny 
+    cpy #80 
+    bcc _loopChar
+    inx 
+    cpx #60
+    bcc _loopRow
+         
     stz MMU_IO_CTRL
-    #A16
+    #pullReg
     rts
 
 
 clut_default_for
-    #A8
+    
     lda #0
     sta MMU_IO_CTRL
     
@@ -151,11 +136,11 @@ _clut_0_default_loop
     cpy #64
     bne _clut_0_default_loop
     stz MMU_IO_CTRL
-    #A16
+    
     rts
 
 clut_default_bck
-    #A8
+    
     lda #0
     sta MMU_IO_CTRL
  
@@ -167,15 +152,12 @@ _clut_0_default_loop
     cpy #64
     bne _clut_0_default_loop
     stz MMU_IO_CTRL
-    #A16
+    
     rts
 
 printBuffer
     #pushReg
-    ;sta tmpA
-    ;stx tmpX
-    ;sty tmpY
-    #A16
+
     ldy #0
     lda #2
     sta MMU_IO_CTRL
@@ -191,13 +173,11 @@ _loop
 
     ;lda $D659
     ;sta $C000 + (27 * 80)
-    #A8 
+     
     stz MMU_IO_CTRL
-    #A8
+    
     #pullReg
-    ;lda tmpA
-    ;ldx tmpX
-    ;ldy tmpY
+
     rts
 
 saveRegisters
@@ -237,10 +217,10 @@ printtest
     #printReg tmpS, $c5d6
     rts
 printReg .macro  tempReg, screenPos 
-    #A8
+    
     lda #2 
     sta MMU_IO_CTRL
-    #A16
+    
     lda \tempReg 
     lsr A
     lsr A
@@ -293,9 +273,9 @@ printReg .macro  tempReg, screenPos
     tax 
     lda m_hex, x
     sta \screenPos + 3
-    #A8 
+     
     stz MMU_IO_CTRL
-    #A16
+    
 .endmacro 
 
 
@@ -321,7 +301,6 @@ default_clut_palette
     .byte 187, 187, 187,0   ; light grey f
     .byte 0, 0, 0 ,0        ; black 0
 default_clut_palette_end
-
 
 m_hex
     .text '0123456789ABCDEF'

@@ -2,30 +2,28 @@ kbd .namespace
 .section code
 
 init 
-    #A16 
     stz mDebounce
     stz mKeyPress
     rts
 
-getKey 
-    #A8
-    jsr isReady
-    lda $D658
+getKey
+    lda mDebounce
     cmp #0
+    bne _skip 
+    lda mKeyPress
+    cmp #0 
     beq _skip
-    tax 
-    stx mKeyPress
-    jsr setTimer
-    ldx mKeyPress
-    txa
+    lda #20
+    sta mDebounce
+    lda mKeyPress
     stz mKeyPress
     rts 
 _skip
+    stz mKeyPress
     lda #0
-    rts
+    rts 
 
 isReady 
-    #A8 
     ldx mDebounce
     txa 
     beq _yes 
@@ -44,15 +42,25 @@ _no
     clc 
 
 setTimer 
-    #A8 
+     
     lda #%00001000
     rts 
+
+is_1_pressed
+    lda mKeyPress
+    cmp #'1'
+    beq _yes  
+    sec 
+    rts 
+_yes
+    stz mKeyPress
+    clc  
+    rts 
+
 .endsection 
 .section variables
-.align 2 
-mKeyPress 
-    .word $00 
-mDebounce 
-    .word $00
+
+
+
 .endsection  
 .endnamespace 

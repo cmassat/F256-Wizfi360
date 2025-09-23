@@ -1,47 +1,46 @@
 menu .namespace
 .section code
-show
-    ;text mode
-    lda #1
-    sta $D000
+handle 
+    lda #state.MENU
+    jsr state.isState 
+    bcc _exec 
+    rts 
+_exec 
+    jsr show
+    rts 
 
-    ;Double Font
-    lda $D001
-    ora #%00000100
-    sta $D001
-    jsr clearScreen
+show
+    #pushReg
+_wait 
+     jsr rx.readResponse
+
     jsr clearScreen
     jsr printMenu
+    jsr printStatusBar
+    ;jsr setDebounce
 
-_loop
-    jsr handleEvents
-    lda mKeyPress
-    cmp #49
-    beq _terminal
-    cmp #50
-    beq _connect
-    bra _loop
+    jsr kbd.is_1_pressed
+    bcc _setTerminalMode 
+
+    #pullReg
     rts
-_terminal
-    stz mKeyPress
-    jsr clearScreen
-    jsr init.screenInit
-    jsr app.mainApp
-    rts
-_connect
-    jsr connect.show
-    rts
-    
+_setTerminalMode
+    lda #state.TERMINAL
+    jsr state.set
+     #pullReg
+    rts 
+
 printMenu
     lda <#m_option_00
     sta SCROLL_SRC_PTR
     lda >#m_option_00
     sta  SCROLL_SRC_PTR + 1
 
-    lda <#$C000
+    lda <#$C000 + (80 * 1) + 27
     sta SCROLL_DEST_PTR
-    lda >#$C000
+    lda >#$C000 + (80 * 1) + 27
     sta  SCROLL_DEST_PTR + 1
+
     lda #2
     sta MMU_IO_CTRL
 
@@ -60,18 +59,53 @@ _done
     stz MMU_IO_CTRL
     rts
 _nextLine
-    inx
-    inx
-    lda screen.screenPos,x
+    lda <#$C000 + (81 * 2) + 25
     sta SCROLL_DEST_PTR
-    inx
-    lda screen.screenPos,x
-    sta SCROLL_DEST_PTR + 1
-    dex
+    lda >#$C000 + (81 * 2) + 25
+    sta  SCROLL_DEST_PTR + 1
     #add1macro SCROLL_SRC_PTR
     bra _loop
     rts
 .endsection 
+
+printStatus 
+     #pushReg
+    lda <#$C000 + (80 * 29) + 10
+    sta SCROLL_DEST_PTR
+    lda >#$C000 + (80 * 29) + 10
+    sta  SCROLL_DEST_PTR + 1
+
+    lda #2 
+    sta MMU_IO_CTRL
+    lda $D659 
+    sta (SCROLL_DEST_PTR)
+    lda #0 
+    sta MMU_IO_CTRL
+    #pullReg
+    rts 
+
+printStatusBar 
+    #pushReg
+    lda <#$C000 + (80 * 26)
+    sta SCROLL_DEST_PTR
+    lda >#$C000 + (80 * 26)
+    sta  SCROLL_DEST_PTR + 1
+
+    lda #3 
+    sta MMU_IO_CTRL
+
+    ldy #0 
+_loop 
+    lda #$55
+    sta (SCROLL_DEST_PTR)
+    #add1macro SCROLL_DEST_PTR
+    iny
+    cpy #80
+    bcc _loop
+    lda #0 
+    sta MMU_IO_CTRL
+    #pullReg
+    rts 
 
 .section variables 
 m_option_00

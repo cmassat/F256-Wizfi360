@@ -39,7 +39,14 @@ POINTER_CLUT_DEST = POINTER_CLUT_SRC + 2
 MENU_BUFFER_PTR = POINTER_CLUT_DEST + 2
 VT100_ESC_PTR = MENU_BUFFER_PTR + 2
 TELNET_PTR = VT100_ESC_PTR + 2
+VIRQ = $FFFE ; 6502 IRQ vector
 
+INT_PEND_0 = $D660 ; Pending register for interrupts 0 - 7
+INT_PEND_1 = $D661 ; Pending register for interrupts 8 - 15
+INT_PEND_2 = $D662
+INT_MASK_0 = $D66C ; Mask register for interrupts 0 - 7
+INT_MASK_1 = $D66D ; Mask register for interrupts 8 - 15
+INT_MASK_2 = $D66E 
 VGM_BANK = $08
 ym_reg_opl2     = $d580 ; Address pointer register for ports 0x000–0x0FF
 ym_reg_data     = $d581 ; DATA

@@ -2,14 +2,23 @@ tx .namespace
 .section code
 init 
     jsr clearTxBuffer
-;_loop
-;    
-;    bra _loop
     rts
 
-sendCommand
-   
-    #A8
+
+sendToBuffer
+    lda mKeypressbak
+    cmp #$0d
+    beq _sendCRLF
+    jsr tx.sendChar
+    rts 
+_sendCRLF
+    lda #13
+    jsr sendChar
+    lda #10
+    jsr sendChar
+    rts 
+
+sendCommand    
     phy
     ldy #0
 _loop
@@ -28,7 +37,7 @@ _end
     lda #10
     jsr sendChar
     ply
-    stz txReady
+    jsr clearTxBuffer
     rts
 
 SendChar
@@ -43,7 +52,6 @@ WaitTX
     rts
 
 clearTxBuffer
-    #A8
     pha
     phx
     phy
@@ -62,6 +70,9 @@ _loop
 .endsection 
 
 .section variables
+isEcho 
+    .byte $00
+
 txBuffer
     .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
     .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00

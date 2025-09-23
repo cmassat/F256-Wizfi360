@@ -1,5 +1,6 @@
 .include "esc__h.asm"
 .include "esc__l.asm"
+.include "esc__m.asm"
 .include "esc_A.asm"
 .include "esc_B.asm"
 .include "esc_C.asm"
@@ -9,5 +10,7 @@
 .include "esc_G.asm"
 .include "esc_H.asm"
 .include "esc_J.asm"
-.include "esc _catch.asm"
+.include "esc_K.asm"
+.include "esc_qm.asm"
+.include "esc_catch.asm"
 

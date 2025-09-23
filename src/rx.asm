@@ -1,7 +1,7 @@
 rx .namespace
 .section code
+
 readResponse
-    #A8
 _readLoop
     jsr read_uart_data
     bcs _doneRead
@@ -11,17 +11,16 @@ _readLoop
     ldx tmpChar
     txa 
     jsr vt100.parseChar
+    bra _readLoop
     
 _doneRead     ; Null-terminate
     rts
 
 read_uart_data
-    #A8
     lda UART_CTRL
     and #CTRL_RX_EMPTY        ; mask for the RX empty bit
     cmp #CTRL_RX_EMPTY        ; loop while buffer is empty
     beq _doneRead
-
     lda UART_DATA
     clc 
     rts
@@ -30,18 +29,12 @@ _doneRead
     rts
 
 rollRxBuffer
-    #A8
-    lda #0
-    ;lda connect.m_isConnected
-    cmp #1 
-    beq _end
     ldx tmpChar
     txa
     cmp #13 
     beq _end 
     cmp #10
     beq _end 
-   ; #pushReg
     ldy #0
     ldx #1
 _loop

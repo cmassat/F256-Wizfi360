@@ -66,33 +66,33 @@ _done_wiFi
 
 
 
-screenInit
-    ;INIT POINTERS
-    lda #<$c000
-    sta TX_SCREEN_PTR
-    lda #>$c000
-    sta TX_SCREEN_PTR + 1
+; screenInit
+;     ;INIT POINTERS
+;     lda #<$c000
+;     sta TX_SCREEN_PTR
+;     lda #>$c000
+;     sta TX_SCREEN_PTR + 1
 
-    lda screen.screenPos
-    sta SCREEN_PTR
-    lda screen.screenPos + 1
-    sta SCREEN_PTR + 1
+;     lda screen.screenPos
+;     sta SCREEN_PTR
+;     lda screen.screenPos + 1
+;     sta SCREEN_PTR + 1
 
-    lda #<txBuffer
-    sta TX_BUFFER_PTR
-    lda #>txBuffer
-    sta TX_BUFFER_PTR + 1
+;     ; lda #<txBuffer
+;     ; sta TX_BUFFER_PTR
+;     ; lda #>txBuffer
+;     ; sta TX_BUFFER_PTR + 1
 
-    lda #<txBufferSent
-    sta TX_SENT_PTR
-    lda #>txBufferSent
-    sta TX_SENT_PTR + 1
+;     lda #<txBufferSent
+;     sta TX_SENT_PTR
+;     lda #>txBufferSent
+;     sta TX_SENT_PTR + 1
 
-    stz txReady
-    lda #1
-    sta mlineNum
+;     stz txReady
+;     lda #1
+;     sta mlineNum
 
-    rts
+;     rts
 .endsection
 .section variables
 .endsection

@@ -4,16 +4,23 @@ ESC_CHAR='H'
 MAX_LENGTH = 80
 .section code 
 handle
-    lda vt100.currChar
+    lda vt100.esc_buffer + 2
     cmp #ESC_CHAR
     beq _parse
+    ;lda vt100.esc_buffer + 3
+    ;cmp #ESC_CHAR
+    ;beq _parse
+    ;lda vt100.esc_buffer + 4
+    ;cmp #ESC_CHAR
+    ;beq _parse
     sec 
     rts 
 _parse
-   
-    lda #1 
+    lda #0
     sta vt100.cursor_col
+    lda #0
     sta vt100.cursor_row
+    jsr debug
     clc
     rts
 

@@ -1,24 +1,26 @@
 ;Cursor LEFT
-escape_J .namespace
-ESC_CHAR='J'
+escape_qm .namespace
+ESC_CHAR='?'
 MAX_LENGTH = 80
 .section code 
 handle
-    lda vt100.esc_buffer + 3
+    lda vt100.esc_buffer + 2
     cmp #ESC_CHAR
     beq _parse
     sec 
     rts 
 _parse
-    lda vt100.esc_buffer + 2
-    cmp #'2' 
-    bne _skip
-    jsr screen.clearScreen
+    lda vt100.esc_buffer + 5
+    cmp #'h'
+    beq _checkEnable
     clc
     rts
-_skip
-    sec
-    rts 
+
+_checkEnable
+    ;25
+    ;turn on cursor 
+    clc
+    rts
 
 .endsection
 .section  variables
