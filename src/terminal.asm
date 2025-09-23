@@ -25,11 +25,17 @@ readKey
     beq _passThrough
     cmp #$82
     beq _starwars
+    cmp #$87
+    beq _logoff
     jsr tx.sendToBuffer 
     rts 
 _end 
+   
     rts 
     
+_logoff
+     jsr wizfi.logoff
+    rts 
 _passThrough
     jsr wizfi.connect_telehack
     bra _waitConnected

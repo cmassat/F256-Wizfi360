@@ -4,7 +4,7 @@ init
     jsr setWiFiMode
 _loop    
     
-   
+
    ; jsr kbd.getKey
    ; jsr vt100.parseChar
     
@@ -196,6 +196,61 @@ _done_wiFi
     #pullReg
     rts
 
+
+close 
+      #pushReg
+    ldy #0
+_loop
+    lda AT_CLOSE, y
+    cmp #0
+    beq _done_wiFi
+    sta tx.txBuffer,y
+    iny
+    bra _loop
+_done_wiFi
+    iny
+    lda #0
+    sta tx.txBuffer,y
+    jsr tx.sendCommand
+    #pullReg
+    rts 
+
+logoff
+    #pushReg
+    jsr waitSecond
+    jsr waitSecond
+    ldy #0
+_loop
+    lda AT_LOG_OFF, y
+    cmp #0
+    beq _done_wiFi
+    sta tx.txBuffer,y
+    iny
+    bra _loop
+_done_wiFi
+    iny
+    lda #0
+    sta tx.txBuffer,y
+    jsr tx.sendString
+    jsr debug
+    jsr waitSecond
+    jsr waitSecond
+    jsr close
+    #pullReg
+    rts
+
+waitSecond
+   ldx #0
+_loopOuter
+   ldy #0
+_loop 
+    iny
+    cpy #0
+    bne _loop 
+    inx 
+    cpx #0
+    bne _loopOuter
+    rts 
 ; screenInit
 ;     ;INIT POINTERS
 ;     lda #<$c000
@@ -222,7 +277,8 @@ _done_wiFi
 ;     rts
 .endsection
 .section variables
-
+isLogoff
+    .byte 0
 AT_WIFI_MODE
     .text "AT+CWMODE=1",0     ; "AT\r\n" + null terminator
 AT_SINGLE_MODE
@@ -245,6 +301,11 @@ AT_TELEHACK
 
 AT_STAR_WARS
     .text 'AT+CIPSTART="TCP","starwarstel.net",23',0
+AT_CLOSE 
+    .text "AT+CIPCLOSE",0
+
+AT_LOG_OFF
+    .text '+++',0
 .endsection
 .endnamespace
 

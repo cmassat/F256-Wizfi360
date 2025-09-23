@@ -55,6 +55,7 @@ _dispatch
 
 handleTimerEvent
     jsr setFrameTimer
+    inc logoffTimer
 
     lda mDebounce
     beq _skip
@@ -131,5 +132,7 @@ evtMouseDy
     .word $00
 evtMouseBtn
     .word $00
+logoffTimer 
+    .byte $0
 .endsection
 

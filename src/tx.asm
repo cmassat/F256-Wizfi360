@@ -18,6 +18,22 @@ _sendCRLF
     jsr sendChar
     rts 
 
+sendString
+    phy
+    ldy #0
+_loop
+    lda txBuffer, y
+    cmp #0
+    beq _end
+    jsr SendChar
+    lda #'B'
+    sta txBuffer, y
+    iny
+    bra _loop
+_end
+    ply
+    jsr clearTxBuffer
+    rts 
 sendCommand    
     phy
     ldy #0
